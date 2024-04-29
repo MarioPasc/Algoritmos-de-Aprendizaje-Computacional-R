@@ -251,13 +251,18 @@ Debido a que los modelos con los que se va a trabajar a continuación son algori
 Adicionalmente, mantener el conjunto de prueba completamente independiente de cualquier decisión tomada durante el proceso de modelado asegura que el rendimiento evaluado en este conjunto es una representación honesta y no sesgada de cómo el modelo se comportará con datos nuevos y no vistos.
 
 ```{r}
-source("./aux_scripts/procedimientosMachineLearning.R")
+splitted_data <- train_test_split(data, 0.2, 0.8, "PCR", "./data")
 
-splitted_data <-train_test_split(data, 0.2, 0.8, "PCR", "./data")
-train_index <- splitted_data[1]
-val_index <- splitted_data[2]
-plot <- splitted_data[3]
-summary <- splitted_data[4]
+train_index <- splitted_data$train_index
+val_index <- splitted_data$val_index
+plot <- splitted_data$plot
+summary <- splitted_data$summary
+
+train_data <- data[unlist(train_index), ]
+val_data <- data[unlist(val_index), ]
+
+test_data <- read.csv(file = "./data/test.csv", sep = ",", dec=".")
+train_data
 ```
 
 ::: {.panel-tabset}
@@ -268,13 +273,14 @@ summary <- splitted_data[4]
 print(plot)
 ```
 
-
 ## Resumen de distribución de datos a través de conjuntos
 
 ```{r}
 knitr::kable(summary)
 ```
 
-
-
 :::
+
+
+
+ 
