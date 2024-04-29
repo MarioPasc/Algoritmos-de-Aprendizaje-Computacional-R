@@ -242,61 +242,39 @@ El modelo final selecciona múltiples categorías dentro de las variables Estadi
 
 El principal objetivo de este proyecto es el de poder predecir si un paciente será PCR-Positivo (Metástasis) mediante el uso de Algoritmos de Aprendizaje Computacional para el procesamiento de los datos de cáncer de mama previamente curados. Para poder conseguir el modelo que más se ajuste a esta tarea, se debe realizar una selección de características sobre el conjunto de datos y un ajuste fino (*fine-tuning*) de los parámetros del modelo de predicción. Todo esto debe ser llevado a cabo utilizando métodos de validación interna que eliminen cualquier tipo de sesgo inherente dentro de los datos en la variable objetivo, asegurando unos resultados estables para la evaluación del rendimiento del modelo para datos a futuro.  
 
+## Validación Interna
 
-## SVM
+Como se ha visto anteriormente, el conjunto de datos sufre de un desbalance en su variable objetivo, PCR. Si bien se evaluará la capacidad predictiva de cada modelo entrenando y evaluando con todos los datos, se necesitará alguna forma de cuantificar el rendimiento del modelo para datos a futuro. 
+
+Debido a que los modelos con los que se va a trabajar a continuación son algoritmos complejos y con una etapa de entrenamiento y ajuste fino complejas, se nos introduce la necesidad de dividir el conjunto de datos en 3 conjuntos: *entrenamiento, validación* y *test*. La justificación de no realizar simplemente una división de *train* y *test* reside en que cuando solo se utiliza un conjunto de entrenamiento y uno de prueba, existe el riesgo de que el ajuste fino del modelo se haga específicamente para maximizar el rendimiento en el conjunto de prueba. Esto puede llevar a un modelo que esté sobreajustado a las características específicas de este conjunto de datos, lo que disminuye su capacidad para generalizar a nuevos datos. El conjunto de validación permitirá entonces ajustar los hiperparámetros y hacer selecciones de modelo sin "contaminar" el conjunto de prueba, que se reserva para una evaluación final más objetiva.
+
+Adicionalmente, mantener el conjunto de prueba completamente independiente de cualquier decisión tomada durante el proceso de modelado asegura que el rendimiento evaluado en este conjunto es una representación honesta y no sesgada de cómo el modelo se comportará con datos nuevos y no vistos.
 
 ```{r}
-# Suponiendo que 'data' es tu dataframe y 'PCR' es la columna objetivo
-set.seed(123)  # Para reproducibilidad
-indices <- createDataPartition(data$PCR, p = 0.80, list = TRUE)
-train_data <- data[indices[[1]], ]
-test_data <- data[-indices[[1]], ]
+source("./aux_scripts/procedimientosMachineLearning.R")
 
-# Modelo SVM básico
-svm_model <- svm(PCR ~ ., data = train_data, kernel = "radial", probability = TRUE)
+splitted_data <-train_test_split(data, 0.2, 0.8, "PCR", "./data")
+train_index <- splitted_data[1]
+val_index <- splitted_data[2]
+plot <- splitted_data[3]
+summary <- splitted_data[4]
+```
 
-# Predicción con el modelo
-predicciones <- predict(svm_model, test_data, probability = TRUE)
+::: {.panel-tabset}
 
-# Extraer probabilidades y crear un factor binario basado en el umbral
-probabilidades <- attr(predicciones, "probabilities")[,2]
-predicciones_truncadas <- ifelse(probabilidades < 0.5, 0, 1)
+## Gráfico de distribución de PCR en los diferentes conjuntos
 
-# Función para calcular métricas
-calcular_metricas <- function(target, predicciones_truncadas) {
-  TP <- sum(predicciones_truncadas == 1 & target == 1)
-  TN <- sum(predicciones_truncadas == 0 & target == 0)
-  FP <- sum(predicciones_truncadas == 1 & target == 0)
-  FN <- sum(predicciones_truncadas == 0 & target == 1)
-
-  Accuracy <- (TP + TN) / (TP + TN + FN + FP)
-  Precision <- ifelse(TP + FP == 0, 0, TP / (TP + FP))
-  Recall <- ifelse(TP + FN == 0, 0, TP / (TP + FN))
-  F1score <- ifelse(Precision + Recall == 0, 0, (2 * Precision * Recall) / (Precision + Recall))
-
-  df_metricas_rendimiento <- data.frame(
-    Metric = c("Accuracy", "Precision", "Recall", "F1 Score"),
-    Value = c(Accuracy, Precision, Recall, F1score)
-  )
-
-  df_rates <- data.frame(
-    Metric = c("True Positives", "True Negatives", "False Positives", "False Negatives"),
-    Value = c(TP, TN, FP, FN)
-  )
-
-  list(
-    Metrics = df_metricas_rendimiento,
-    Rates = df_rates
-  )
-}
-
-# Calcular métricas
-resultado_metricas <- calcular_metricas(test_data$PCR, predicciones_truncadas)
-
-# Imprimir resultados
-print(resultado_metricas$Metrics)
-print(resultado_metricas$Rates)
-
+```{r}
+print(plot)
 ```
 
 
+## Resumen de distribución de datos a través de conjuntos
+
+```{r}
+knitr::kable(summary)
+```
+
+
+
+:::
