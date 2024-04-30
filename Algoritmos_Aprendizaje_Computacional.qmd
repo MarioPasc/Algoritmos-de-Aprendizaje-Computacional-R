@@ -58,6 +58,8 @@ library(reshape2)
 library(MASS)
 library(pROC)
 library(e1071)
+library(nnet)
+library(rpart)
 
 data <- read.csv(file = "./data/datos_limpios.csv", sep = ",", dec=".")
 data["X"] <- NULL
@@ -244,22 +246,25 @@ El principal objetivo de este proyecto es el de poder predecir si un paciente se
 
 ## Validación Interna
 
+### División de los datos
+
 Como se ha visto anteriormente, el conjunto de datos sufre de un desbalance en su variable objetivo, PCR. Si bien se evaluará la capacidad predictiva de cada modelo entrenando y evaluando con todos los datos, se necesitará alguna forma de cuantificar el rendimiento del modelo para datos a futuro. 
 
 Debido a que los modelos con los que se va a trabajar a continuación son algoritmos complejos y con una etapa de entrenamiento y ajuste fino complejas, se nos introduce la necesidad de dividir el conjunto de datos en 3 conjuntos: *entrenamiento, validación* y *test*. La justificación de no realizar simplemente una división de *train* y *test* reside en que cuando solo se utiliza un conjunto de entrenamiento y uno de prueba, existe el riesgo de que el ajuste fino del modelo se haga específicamente para maximizar el rendimiento en el conjunto de prueba. Esto puede llevar a un modelo que esté sobreajustado a las características específicas de este conjunto de datos, lo que disminuye su capacidad para generalizar a nuevos datos. El conjunto de validación permitirá entonces ajustar los hiperparámetros y hacer selecciones de modelo sin "contaminar" el conjunto de prueba, que se reserva para una evaluación final más objetiva.
 
 Adicionalmente, mantener el conjunto de prueba completamente independiente de cualquier decisión tomada durante el proceso de modelado asegura que el rendimiento evaluado en este conjunto es una representación honesta y no sesgada de cómo el modelo se comportará con datos nuevos y no vistos.
 
+Esto se realizará guardando un conjunto de test totalmente separado del conjunto de entrenamiento. Este conjunto de test será "olvidado" hasta que se tenga que hacer la evaluación final de los modelos. El conjunto de entrenamiento se dividirá en validación, y, entrenamiento. Esta división se realizará dentro del modelo de validación interna que se decida usar. 
+
 ```{r}
-splitted_data <- train_test_split(data, 0.2, 0.8, "PCR", "./data")
+source("./aux_scripts/procedimientosMachineLearning.R")
+splitted_data <- train_test_split(data, 0.8, "PCR", "./data")
 
 train_index <- splitted_data$train_index
-val_index <- splitted_data$val_index
 plot <- splitted_data$plot
 summary <- splitted_data$summary
 
 train_data <- read.csv(file = "./data/train.csv", sep = ",", dec=".")
-val_data <- read.csv(file = "./data/val.csv", sep = ",", dec=".")
 test_data <- read.csv(file = "./data/test.csv", sep = ",", dec=".")
 ```
 
@@ -276,9 +281,83 @@ print(plot)
 ```{r}
 knitr::kable(summary)
 ```
-
 :::
 
+### Métodos de validación interna
+
+Como se demuestra en [@gonzalez2024predictive], un estudio anterior realizado utilizando este mismo conjunto de datos para el diseño de un modelo pridctivo basado en la regresión logística, el método recomendado por la literatura, *k-fold cross validation* no funciona de una manera efectiva con estas muestras. Esto se debe a que el desbalance de la variable objetivo y la moderada cantidad de datos hace que el rendimiento del modelo se vea limitado al elegir un k demasiado bajo, ya que las métricas se vuelven poco representativas, y un k demasiado alto, ya que los folds se vuelven poco representativos al disminuir la varianza de los datos de cada uno, haciendo que el rendimiento se vuelva inestable. 
+
+Es por esto que, a lo largo de este estudio, se utilizará un método de validación basado en *Repeated Hold-Out* -con la misma semilla para asegurar la reproducibilidad. Para poder obtener un rendimiento representativo sin repetir divisiones de datos aleatorias, se harán 30 iteraciones. 
 
 
- 
+
+
+```{r, warning=FALSE, message=FALSE}
+source("./aux_scripts/procedimientosMachineLearning.R")
+
+dt_model <- function(formula, data) {
+  rpart(formula = formula, data = data, method = "class")
+}
+
+rf_model <- function(formula, data) {
+  rpart(formula = formula, data = data, method = "class", control = rpart.control(minsplit = 2, cp = 0))
+}
+
+svm_model <- function(formula, data) {
+  x <- model.matrix(formula, data)
+  y <- data[[all.vars(formula)[1]]]
+  svm(x = x, y = y, kernel = "sigmoid", cost = 10, gamma = 1, probability = TRUE)
+}
+
+nn_model <- function(formula, data) {
+  nnet(formula = formula, data = data, size = 5, decay = 0.1, maxit = 100, trace = FALSE, linout = TRUE)
+}
+
+
+
+res <- repeated_holdout(train_data = train_data, val_ratio = .2, 
+                        target_var = "PCR", n_iterations = 20, 
+                        threshold = 0.35, vars = "Estadio+Fenotipo+Grado+REst+RPro", 
+                        model_func=rf_model)
+performance_data <- evaluate_holdout(results = res$results)
+res$results
+performance_data$avg_metrics
+```
+
+```{r}
+performance_data$plot
+performance_data$metrics
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
