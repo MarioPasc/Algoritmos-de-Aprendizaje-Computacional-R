@@ -258,11 +258,9 @@ val_index <- splitted_data$val_index
 plot <- splitted_data$plot
 summary <- splitted_data$summary
 
-train_data <- data[unlist(train_index), ]
-val_data <- data[unlist(val_index), ]
-
+train_data <- read.csv(file = "./data/train.csv", sep = ",", dec=".")
+val_data <- read.csv(file = "./data/val.csv", sep = ",", dec=".")
 test_data <- read.csv(file = "./data/test.csv", sep = ",", dec=".")
-train_data
 ```
 
 ::: {.panel-tabset}
