@@ -55,7 +55,27 @@ div.sourceCode
 @media screen {
 pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
-</style>
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+  margin-bottom: 0em;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
 
 
 <script src="Algoritmos_Aprendizaje_Computacional_files/libs/clipboard/clipboard.min.js"></script>
@@ -89,7 +109,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </ul></li>
   <li><a href="#modelos-predictivos-avanzados" id="toc-modelos-predictivos-avanzados" class="nav-link" data-scroll-target="#modelos-predictivos-avanzados"><span class="header-section-number">3</span> Modelos Predictivos Avanzados</a>
   <ul class="collapse">
-  <li><a href="#validación-interna" id="toc-validación-interna" class="nav-link" data-scroll-target="#validación-interna"><span class="header-section-number">3.1</span> Validación Interna</a></li>
+  <li><a href="#validación-interna" id="toc-validación-interna" class="nav-link" data-scroll-target="#validación-interna"><span class="header-section-number">3.1</span> Validación Interna</a>
+  <ul class="collapse">
+  <li><a href="#división-de-los-datos" id="toc-división-de-los-datos" class="nav-link" data-scroll-target="#división-de-los-datos"><span class="header-section-number">3.1.1</span> División de los datos</a></li>
+  <li><a href="#métodos-de-validación-interna" id="toc-métodos-de-validación-interna" class="nav-link" data-scroll-target="#métodos-de-validación-interna"><span class="header-section-number">3.1.2</span> Métodos de validación interna</a></li>
+  </ul></li>
   </ul></li>
   </ul>
 <div class="quarto-other-links"><h2>Otros Enlaces</h2><ul><li><a href="https://www.linkedin.com/in/mario-pascual-gonzalez/"><i class="bi bi-linkedin"></i>LinkedIn</a></li><li><a href="mailto:mario.pg02@gmail.com?subject=Contacto desde el informe de Modelado Predictivo"><i class="bi bi-envelope"></i>Correo Electrónico</a></li><li><a href="https://github.com/MarioPasc"><i class="bi bi-github"></i>Perfil de Github</a></li></ul></div><div class="quarto-code-links"><h2>Enlaces de código</h2><ul><li><a href="https://github.com/MarioPasc/Modelado-Predictivo-Cancer-de-Mama-R"><i class="bi bi-file-code"></i>Repositorio del Informe</a></li></ul></div></nav>
@@ -531,19 +555,24 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>El principal objetivo de este proyecto es el de poder predecir si un paciente será PCR-Positivo (Metástasis) mediante el uso de Algoritmos de Aprendizaje Computacional para el procesamiento de los datos de cáncer de mama previamente curados. Para poder conseguir el modelo que más se ajuste a esta tarea, se debe realizar una selección de características sobre el conjunto de datos y un ajuste fino (<em>fine-tuning</em>) de los parámetros del modelo de predicción. Todo esto debe ser llevado a cabo utilizando métodos de validación interna que eliminen cualquier tipo de sesgo inherente dentro de los datos en la variable objetivo, asegurando unos resultados estables para la evaluación del rendimiento del modelo para datos a futuro.</p>
 <section id="validación-interna" class="level2" data-number="3.1">
 <h2 data-number="3.1" class="anchored" data-anchor-id="validación-interna"><span class="header-section-number">3.1</span> Validación Interna</h2>
+<section id="división-de-los-datos" class="level3" data-number="3.1.1">
+<h3 data-number="3.1.1" class="anchored" data-anchor-id="división-de-los-datos"><span class="header-section-number">3.1.1</span> División de los datos</h3>
 <p>Como se ha visto anteriormente, el conjunto de datos sufre de un desbalance en su variable objetivo, PCR. Si bien se evaluará la capacidad predictiva de cada modelo entrenando y evaluando con todos los datos, se necesitará alguna forma de cuantificar el rendimiento del modelo para datos a futuro.</p>
 <p>Debido a que los modelos con los que se va a trabajar a continuación son algoritmos complejos y con una etapa de entrenamiento y ajuste fino complejas, se nos introduce la necesidad de dividir el conjunto de datos en 3 conjuntos: <em>entrenamiento, validación</em> y <em>test</em>. La justificación de no realizar simplemente una división de <em>train</em> y <em>test</em> reside en que cuando solo se utiliza un conjunto de entrenamiento y uno de prueba, existe el riesgo de que el ajuste fino del modelo se haga específicamente para maximizar el rendimiento en el conjunto de prueba. Esto puede llevar a un modelo que esté sobreajustado a las características específicas de este conjunto de datos, lo que disminuye su capacidad para generalizar a nuevos datos. El conjunto de validación permitirá entonces ajustar los hiperparámetros y hacer selecciones de modelo sin “contaminar” el conjunto de prueba, que se reserva para una evaluación final más objetiva.</p>
 <p>Adicionalmente, mantener el conjunto de prueba completamente independiente de cualquier decisión tomada durante el proceso de modelado asegura que el rendimiento evaluado en este conjunto es una representación honesta y no sesgada de cómo el modelo se comportará con datos nuevos y no vistos.</p>
+<p>Esto se realizará guardando un conjunto de test totalmente separado del conjunto de entrenamiento. Este conjunto de test será “olvidado” hasta que se tenga que hacer la evaluación final de los modelos. El conjunto de entrenamiento se dividirá en validación, y, entrenamiento. Esta división se realizará dentro del modelo de validación interna que se decida usar.</p>
 <div class="cell" data-layout-align="center">
 <details class="code-fold">
 <summary>Código</summary>
 <div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">source</span>(<span class="st">"./aux_scripts/procedimientosMachineLearning.R"</span>)</span>
-<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>splitted_data <span class="ot">&lt;-</span><span class="fu">train_test_split</span>(data, <span class="fl">0.2</span>, <span class="fl">0.8</span>, <span class="st">"PCR"</span>, <span class="st">"./data"</span>)</span>
-<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>train_index <span class="ot">&lt;-</span> splitted_data[<span class="dv">1</span>]</span>
-<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>val_index <span class="ot">&lt;-</span> splitted_data[<span class="dv">2</span>]</span>
-<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>plot <span class="ot">&lt;-</span> splitted_data[<span class="dv">3</span>]</span>
-<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>summary <span class="ot">&lt;-</span> splitted_data[<span class="dv">4</span>]</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>splitted_data <span class="ot">&lt;-</span> <span class="fu">train_test_split</span>(data, <span class="fl">0.8</span>, <span class="st">"PCR"</span>, <span class="st">"./data"</span>)</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>train_index <span class="ot">&lt;-</span> splitted_data<span class="sc">$</span>train_index</span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>plot <span class="ot">&lt;-</span> splitted_data<span class="sc">$</span>plot</span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>summary <span class="ot">&lt;-</span> splitted_data<span class="sc">$</span>summary</span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>train_data <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="at">file =</span> <span class="st">"./data/train.csv"</span>, <span class="at">sep =</span> <span class="st">","</span>, <span class="at">dec=</span><span class="st">"."</span>)</span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>test_data <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="at">file =</span> <span class="st">"./data/test.csv"</span>, <span class="at">sep =</span> <span class="st">","</span>, <span class="at">dec=</span><span class="st">"."</span>)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
 <div class="tabset-margin-container"></div><div class="panel-tabset">
@@ -617,12 +646,23 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </div>
+</section>
+<section id="métodos-de-validación-interna" class="level3" data-number="3.1.2">
+<h3 data-number="3.1.2" class="anchored" data-anchor-id="métodos-de-validación-interna"><span class="header-section-number">3.1.2</span> Métodos de validación interna</h3>
+<p>Como se demuestra en <span class="citation" data-cites="gonzalez2024predictive">(<a href="#ref-gonzalez2024predictive" role="doc-biblioref">González 2024</a>)</span>, un estudio anterior realizado utilizando este mismo conjunto de datos para el diseño de un modelo pridctivo basado en la regresión logística, el método recomendado por la literatura, <em>k-fold cross validation</em> no funciona de una manera efectiva con estas muestras. Esto se debe a que el desbalance de la variable objetivo y la moderada cantidad de datos hace que el rendimiento del modelo se vea limitado al elegir un k demasiado bajo, ya que las métricas se vuelven poco representativas, y un k demasiado alto, ya que los folds se vuelven poco representativos al disminuir la varianza de los datos de cada uno, haciendo que el rendimiento se vuelva inestable.</p>
+<p>Es por esto que, a lo largo de este estudio, se utilizará un método de validación basado en <em>Repeated Hold-Out</em> -con la misma semilla para asegurar la reproducibilidad. Para poder obtener un rendimiento representativo sin repetir divisiones de datos aleatorias, se harán 30 iteraciones.</p>
 <!-- -->
 
+
+</section>
 </section>
 </section>
 
-</main>
+<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" role="doc-bibliography" id="quarto-bibliography"><h2 class="anchored quarto-appendix-heading">Referencias</h2><div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" role="list">
+<div id="ref-gonzalez2024predictive" class="csl-entry" role="listitem">
+González, Mario Pascual. 2024. <span>«Modelado Predictivo: C<span>á</span>ncer de Mama»</span>. <a href="https://URL">URL</a>.
+</div>
+</div></section></div></main>
 <!-- /main column -->
 <script id="quarto-html-after-body" type="application/javascript">
 window.document.addEventListener("DOMContentLoaded", function (event) {
@@ -1474,40 +1514,83 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb19-270"><a href="#cb19-270" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb19-271"><a href="#cb19-271" aria-hidden="true" tabindex="-1"></a><span class="fu">## Validación Interna</span></span>
 <span id="cb19-272"><a href="#cb19-272" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb19-273"><a href="#cb19-273" aria-hidden="true" tabindex="-1"></a>Como se ha visto anteriormente, el conjunto de datos sufre de un desbalance en su variable objetivo, PCR. Si bien se evaluará la capacidad predictiva de cada modelo entrenando y evaluando con todos los datos, se necesitará alguna forma de cuantificar el rendimiento del modelo para datos a futuro. </span>
+<span id="cb19-273"><a href="#cb19-273" aria-hidden="true" tabindex="-1"></a><span class="fu">### División de los datos</span></span>
 <span id="cb19-274"><a href="#cb19-274" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb19-275"><a href="#cb19-275" aria-hidden="true" tabindex="-1"></a>Debido a que los modelos con los que se va a trabajar a continuación son algoritmos complejos y con una etapa de entrenamiento y ajuste fino complejas, se nos introduce la necesidad de dividir el conjunto de datos en 3 conjuntos: *entrenamiento, validación* y *test*. La justificación de no realizar simplemente una división de *train* y *test* reside en que cuando solo se utiliza un conjunto de entrenamiento y uno de prueba, existe el riesgo de que el ajuste fino del modelo se haga específicamente para maximizar el rendimiento en el conjunto de prueba. Esto puede llevar a un modelo que esté sobreajustado a las características específicas de este conjunto de datos, lo que disminuye su capacidad para generalizar a nuevos datos. El conjunto de validación permitirá entonces ajustar los hiperparámetros y hacer selecciones de modelo sin "contaminar" el conjunto de prueba, que se reserva para una evaluación final más objetiva.</span>
+<span id="cb19-275"><a href="#cb19-275" aria-hidden="true" tabindex="-1"></a>Como se ha visto anteriormente, el conjunto de datos sufre de un desbalance en su variable objetivo, PCR. Si bien se evaluará la capacidad predictiva de cada modelo entrenando y evaluando con todos los datos, se necesitará alguna forma de cuantificar el rendimiento del modelo para datos a futuro. </span>
 <span id="cb19-276"><a href="#cb19-276" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb19-277"><a href="#cb19-277" aria-hidden="true" tabindex="-1"></a>Adicionalmente, mantener el conjunto de prueba completamente independiente de cualquier decisión tomada durante el proceso de modelado asegura que el rendimiento evaluado en este conjunto es una representación honesta y no sesgada de cómo el modelo se comportará con datos nuevos y no vistos.</span>
+<span id="cb19-277"><a href="#cb19-277" aria-hidden="true" tabindex="-1"></a>Debido a que los modelos con los que se va a trabajar a continuación son algoritmos complejos y con una etapa de entrenamiento y ajuste fino complejas, se nos introduce la necesidad de dividir el conjunto de datos en 3 conjuntos: *entrenamiento, validación* y *test*. La justificación de no realizar simplemente una división de *train* y *test* reside en que cuando solo se utiliza un conjunto de entrenamiento y uno de prueba, existe el riesgo de que el ajuste fino del modelo se haga específicamente para maximizar el rendimiento en el conjunto de prueba. Esto puede llevar a un modelo que esté sobreajustado a las características específicas de este conjunto de datos, lo que disminuye su capacidad para generalizar a nuevos datos. El conjunto de validación permitirá entonces ajustar los hiperparámetros y hacer selecciones de modelo sin "contaminar" el conjunto de prueba, que se reserva para una evaluación final más objetiva.</span>
 <span id="cb19-278"><a href="#cb19-278" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb19-281"><a href="#cb19-281" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb19-282"><a href="#cb19-282" aria-hidden="true" tabindex="-1"></a><span class="fu">source</span>(<span class="st">"./aux_scripts/procedimientosMachineLearning.R"</span>)</span>
-<span id="cb19-283"><a href="#cb19-283" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb19-284"><a href="#cb19-284" aria-hidden="true" tabindex="-1"></a>splitted_data <span class="ot">&lt;-</span><span class="fu">train_test_split</span>(data, <span class="fl">0.2</span>, <span class="fl">0.8</span>, <span class="st">"PCR"</span>, <span class="st">"./data"</span>)</span>
-<span id="cb19-285"><a href="#cb19-285" aria-hidden="true" tabindex="-1"></a>train_index <span class="ot">&lt;-</span> splitted_data[<span class="dv">1</span>]</span>
-<span id="cb19-286"><a href="#cb19-286" aria-hidden="true" tabindex="-1"></a>val_index <span class="ot">&lt;-</span> splitted_data[<span class="dv">2</span>]</span>
-<span id="cb19-287"><a href="#cb19-287" aria-hidden="true" tabindex="-1"></a>plot <span class="ot">&lt;-</span> splitted_data[<span class="dv">3</span>]</span>
-<span id="cb19-288"><a href="#cb19-288" aria-hidden="true" tabindex="-1"></a>summary <span class="ot">&lt;-</span> splitted_data[<span class="dv">4</span>]</span>
-<span id="cb19-289"><a href="#cb19-289" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb19-290"><a href="#cb19-290" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb19-291"><a href="#cb19-291" aria-hidden="true" tabindex="-1"></a>::: {.panel-tabset}</span>
+<span id="cb19-279"><a href="#cb19-279" aria-hidden="true" tabindex="-1"></a>Adicionalmente, mantener el conjunto de prueba completamente independiente de cualquier decisión tomada durante el proceso de modelado asegura que el rendimiento evaluado en este conjunto es una representación honesta y no sesgada de cómo el modelo se comportará con datos nuevos y no vistos.</span>
+<span id="cb19-280"><a href="#cb19-280" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-281"><a href="#cb19-281" aria-hidden="true" tabindex="-1"></a>Esto se realizará guardando un conjunto de test totalmente separado del conjunto de entrenamiento. Este conjunto de test será "olvidado" hasta que se tenga que hacer la evaluación final de los modelos. El conjunto de entrenamiento se dividirá en validación, y, entrenamiento. Esta división se realizará dentro del modelo de validación interna que se decida usar. </span>
+<span id="cb19-282"><a href="#cb19-282" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-285"><a href="#cb19-285" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb19-286"><a href="#cb19-286" aria-hidden="true" tabindex="-1"></a><span class="fu">source</span>(<span class="st">"./aux_scripts/procedimientosMachineLearning.R"</span>)</span>
+<span id="cb19-287"><a href="#cb19-287" aria-hidden="true" tabindex="-1"></a>splitted_data <span class="ot">&lt;-</span> <span class="fu">train_test_split</span>(data, <span class="fl">0.8</span>, <span class="st">"PCR"</span>, <span class="st">"./data"</span>)</span>
+<span id="cb19-288"><a href="#cb19-288" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-289"><a href="#cb19-289" aria-hidden="true" tabindex="-1"></a>train_index <span class="ot">&lt;-</span> splitted_data<span class="sc">$</span>train_index</span>
+<span id="cb19-290"><a href="#cb19-290" aria-hidden="true" tabindex="-1"></a>plot <span class="ot">&lt;-</span> splitted_data<span class="sc">$</span>plot</span>
+<span id="cb19-291"><a href="#cb19-291" aria-hidden="true" tabindex="-1"></a>summary <span class="ot">&lt;-</span> splitted_data<span class="sc">$</span>summary</span>
 <span id="cb19-292"><a href="#cb19-292" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb19-293"><a href="#cb19-293" aria-hidden="true" tabindex="-1"></a><span class="fu">## Gráfico de distribución de PCR en los diferentes conjuntos</span></span>
-<span id="cb19-294"><a href="#cb19-294" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb19-297"><a href="#cb19-297" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb19-298"><a href="#cb19-298" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(plot)</span>
-<span id="cb19-299"><a href="#cb19-299" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb19-293"><a href="#cb19-293" aria-hidden="true" tabindex="-1"></a>train_data <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="at">file =</span> <span class="st">"./data/train.csv"</span>, <span class="at">sep =</span> <span class="st">","</span>, <span class="at">dec=</span><span class="st">"."</span>)</span>
+<span id="cb19-294"><a href="#cb19-294" aria-hidden="true" tabindex="-1"></a>test_data <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="at">file =</span> <span class="st">"./data/test.csv"</span>, <span class="at">sep =</span> <span class="st">","</span>, <span class="at">dec=</span><span class="st">"."</span>)</span>
+<span id="cb19-295"><a href="#cb19-295" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb19-296"><a href="#cb19-296" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-297"><a href="#cb19-297" aria-hidden="true" tabindex="-1"></a>::: {.panel-tabset}</span>
+<span id="cb19-298"><a href="#cb19-298" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-299"><a href="#cb19-299" aria-hidden="true" tabindex="-1"></a><span class="fu">## Gráfico de distribución de PCR en los diferentes conjuntos</span></span>
 <span id="cb19-300"><a href="#cb19-300" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb19-301"><a href="#cb19-301" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb19-302"><a href="#cb19-302" aria-hidden="true" tabindex="-1"></a><span class="fu">## Resumen de distribución de datos a través de conjuntos</span></span>
-<span id="cb19-303"><a href="#cb19-303" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb19-306"><a href="#cb19-306" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb19-307"><a href="#cb19-307" aria-hidden="true" tabindex="-1"></a>knitr<span class="sc">::</span><span class="fu">kable</span>(summary)</span>
-<span id="cb19-308"><a href="#cb19-308" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb19-309"><a href="#cb19-309" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb19-310"><a href="#cb19-310" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb19-311"><a href="#cb19-311" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb19-312"><a href="#cb19-312" aria-hidden="true" tabindex="-1"></a>:::</span>
+<span id="cb19-303"><a href="#cb19-303" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb19-304"><a href="#cb19-304" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(plot)</span>
+<span id="cb19-305"><a href="#cb19-305" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb19-306"><a href="#cb19-306" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-307"><a href="#cb19-307" aria-hidden="true" tabindex="-1"></a><span class="fu">## Resumen de distribución de datos a través de conjuntos</span></span>
+<span id="cb19-308"><a href="#cb19-308" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-311"><a href="#cb19-311" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb19-312"><a href="#cb19-312" aria-hidden="true" tabindex="-1"></a>knitr<span class="sc">::</span><span class="fu">kable</span>(summary)</span>
+<span id="cb19-313"><a href="#cb19-313" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb19-314"><a href="#cb19-314" aria-hidden="true" tabindex="-1"></a>:::</span>
+<span id="cb19-315"><a href="#cb19-315" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-316"><a href="#cb19-316" aria-hidden="true" tabindex="-1"></a><span class="fu">### Métodos de validación interna</span></span>
+<span id="cb19-317"><a href="#cb19-317" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-318"><a href="#cb19-318" aria-hidden="true" tabindex="-1"></a>Como se demuestra en <span class="co">[</span><span class="ot">@gonzalez2024predictive</span><span class="co">]</span>, un estudio anterior realizado utilizando este mismo conjunto de datos para el diseño de un modelo pridctivo basado en la regresión logística, el método recomendado por la literatura, *k-fold cross validation* no funciona de una manera efectiva con estas muestras. Esto se debe a que el desbalance de la variable objetivo y la moderada cantidad de datos hace que el rendimiento del modelo se vea limitado al elegir un k demasiado bajo, ya que las métricas se vuelven poco representativas, y un k demasiado alto, ya que los folds se vuelven poco representativos al disminuir la varianza de los datos de cada uno, haciendo que el rendimiento se vuelva inestable. </span>
+<span id="cb19-319"><a href="#cb19-319" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-320"><a href="#cb19-320" aria-hidden="true" tabindex="-1"></a>Es por esto que, a lo largo de este estudio, se utilizará un método de validación basado en *Repeated Hold-Out* -con la misma semilla para asegurar la reproducibilidad. Para poder obtener un rendimiento representativo sin repetir divisiones de datos aleatorias, se harán 30 iteraciones. </span>
+<span id="cb19-321"><a href="#cb19-321" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-322"><a href="#cb19-322" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-323"><a href="#cb19-323" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-324"><a href="#cb19-324" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-325"><a href="#cb19-325" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-326"><a href="#cb19-326" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-327"><a href="#cb19-327" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-328"><a href="#cb19-328" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-329"><a href="#cb19-329" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-330"><a href="#cb19-330" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-331"><a href="#cb19-331" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-332"><a href="#cb19-332" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-333"><a href="#cb19-333" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-334"><a href="#cb19-334" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-335"><a href="#cb19-335" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-336"><a href="#cb19-336" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-337"><a href="#cb19-337" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-338"><a href="#cb19-338" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-339"><a href="#cb19-339" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-340"><a href="#cb19-340" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-341"><a href="#cb19-341" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-342"><a href="#cb19-342" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-343"><a href="#cb19-343" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-344"><a href="#cb19-344" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-345"><a href="#cb19-345" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-346"><a href="#cb19-346" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-347"><a href="#cb19-347" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-348"><a href="#cb19-348" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-349"><a href="#cb19-349" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-350"><a href="#cb19-350" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-351"><a href="#cb19-351" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-352"><a href="#cb19-352" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-353"><a href="#cb19-353" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-354"><a href="#cb19-354" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-355"><a href="#cb19-355" aria-hidden="true" tabindex="-1"></a></span>
 </code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div></div></div></div></div>
 </div> <!-- /content -->
