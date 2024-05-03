@@ -224,8 +224,8 @@ Observando el resto de gráficas, se pueden notar otros fenómenos que podrían 
 
 ```{r, warning=FALSE, message=FALSE}
 source("./aux_scripts/calculaPValor.R")
-plot_p_valores(data)
-
+plot <- plot_p_valores(data)
+print(plot)
 ```
 
 Como se puede observar en la salida del modelo de regresión logística, las variables que muestran una asociación estadísticamente significativa con la variable objetivo PCR son **Estadio, Fenotipo, Grado, REst, y RPro**. Estas variables han sido seleccionadas mediante un proceso iterativo que utiliza el algoritmo `stepAIC`, el cual optimiza el modelo añadiendo o eliminando variables para minimizar el criterio de información de Akaike (AIC). Este enfoque no solo confirma la significancia estadística inicial observada en los análisis de p-valores, sino que también ajusta el modelo para incluir solo las variables más informativas.
@@ -236,6 +236,7 @@ source("./aux_scripts/calculaPValor.R")
 ajustado <- ajustarModeloLogistico(data, "PCR", "Estadio + Fenotipo + Grado + REst + RPro")
 asociacion <- c("Estadio", "Fenotipo", "Grado", "REst", "RPro")
 variables_seleccionadas <- ajustado$variables_seleccionadas
+variables_asociacion <- "Estadio+Fenotipo+Grado+REst+RPro"
 ```
 
 El modelo final selecciona múltiples categorías dentro de las variables Estadio, Fenotipo, Grado, REst, y RPro que son determinantes para explicar la variable PCR. Estas categorías incluyen, por ejemplo, diferentes tipos de Estadio y Fenotipo, que muestran cómo varía la probabilidad de PCR en función de estas características. Este conjunto de variables y categorías será denominado de ahora en adelante como Asociacion, en referencia al método efectivo de selección de variables utilizado.
@@ -243,6 +244,69 @@ El modelo final selecciona múltiples categorías dentro de las variables Estadi
 # Modelos Predictivos Avanzados
 
 El principal objetivo de este proyecto es el de poder predecir si un paciente será PCR-Positivo (Metástasis) mediante el uso de Algoritmos de Aprendizaje Computacional para el procesamiento de los datos de cáncer de mama previamente curados. Para poder conseguir el modelo que más se ajuste a esta tarea, se debe realizar una selección de características sobre el conjunto de datos y un ajuste fino (*fine-tuning*) de los parámetros del modelo de predicción. Todo esto debe ser llevado a cabo utilizando métodos de validación interna que eliminen cualquier tipo de sesgo inherente dentro de los datos en la variable objetivo, asegurando unos resultados estables para la evaluación del rendimiento del modelo para datos a futuro.  
+
+## Rendimiento Aparente
+
+Para poder realizar una estimación de cómo de bien los modelos conseguirán predecir sobre el conjunto de datos se va a realizar una estimación del rendimiento aparente. Esto consistirá en entrenar con todo el conjunto de datos, y evaluar con estos mismos datos. De esta forma, podremos evaluar la capacidad predictiva del modelo antes de intentar encontrar una manera estable de obtener los métricas de rendimiento -es decir, aplicar una validación interna.
+
+### Máquinas de Vectores de Soporte (SVM)
+
+```{r}
+source("./aux_scripts/procedimientosMachineLearning.R")
+
+svm_model <- function(formula, data) {
+  x <- model.matrix(formula, data)
+  y <- data[[all.vars(formula)[1]]]
+  y <- factor(y, levels = c(0, 1))
+  svm(x = x, y = y, kernel = "poly", cost = 20, gamma = .5, probability = TRUE)
+}
+#  svm(x = x, y = y, kernel = "sigmoid", cost = 18, gamma = .5, probability = TRUE)
+#  svm(x = x, y = y, kernel = "radial", cost = 5, gamma = .5, probability = TRUE)
+#  svm(x = x, y = y, kernel = "poly", cost = 20, gamma = .5, probability = TRUE)
+
+
+resultadosAparentesSVM <- evaluate_aparent_performance_model(data = data, target_var = "PCR",
+                                                             model_func = svm_model,
+                                                             vars = variables_asociacion,
+                                                             threshold = .35)
+resultadosAparentesSVM$confusion_matrix
+resultadosAparentesSVM$roc_curve$auc
+print("Accuracy: ")
+resultadosAparentesSVM$accuracy
+print("Precision: ")
+resultadosAparentesSVM$precision
+print("Recall: ")
+resultadosAparentesSVM$recall
+print("F1-Score: ")
+resultadosAparentesSVM$f1_score
+```
+### Redes de Neuronas Artificiales (ANN)
+
+```{r}
+source("./aux_scripts/procedimientosMachineLearning.R")
+
+nn_model <- function(formula, data) {
+  nnet(formula = formula, data = data, size = 30, 
+       decay = 0.1, maxit = 100, trace = FALSE, 
+       linout = FALSE, random_state = 42)
+}
+
+
+resultadosAparentesSVM <- evaluate_aparent_performance_model(data = data, target_var = "PCR",
+                                                             model_func = nn_model,
+                                                             vars = variables_asociacion,
+                                                             threshold = .35)
+resultadosAparentesSVM$confusion_matrix
+resultadosAparentesSVM$roc_curve$auc
+print("Accuracy: ")
+resultadosAparentesSVM$accuracy
+print("Precision: ")
+resultadosAparentesSVM$precision
+print("Recall: ")
+resultadosAparentesSVM$recall
+print("F1-Score: ")
+resultadosAparentesSVM$f1_score
+```
 
 ## Validación Interna
 
@@ -289,6 +353,36 @@ Como se demuestra en [@gonzalez2024predictive], un estudio anterior realizado ut
 
 Es por esto que, a lo largo de este estudio, se utilizará un método de validación basado en *Repeated Hold-Out* -con la misma semilla para asegurar la reproducibilidad. Para poder obtener un rendimiento representativo sin repetir divisiones de datos aleatorias, se harán 30 iteraciones. 
 
+## Máquinas de Vectores de Soportte (SVM)
+
+Una Máquina de Vectores de Soporte (SVM) es un algoritmo de aprendizaje supervisado utilizado para la clasificación y regresión. Su objetivo principal es encontrar el **hiperplano óptimo** que mejor separa las clases en el espacio de características. Los **vectores de soporte** son los puntos de datos más cercanos al hiperplano de separación y son cruciales para determinar su posición y orientación. Estos vectores de soporte son los puntos que definen el *"margen"*, que es la distancia entre el hiperplano y los puntos de datos más cercanos. Durante el entrenamiento, **el SVM busca el hiperplano que maximiza esta margen**. Para seleccionar los vectores de soporte, el SVM utiliza un proceso de optimización que busca minimizar una función de pérdida que penaliza la clasificación incorrecta de los puntos de datos. 
+
+La **función kernel SVM** es una función que transforma los datos de entrada en un espacio de características de mayor dimensión, donde es más fácil encontrar un hiperplano de separación. Esto permite que el SVM maneje conjuntos de datos que no son linealmente separables en su espacio de características original. 
+
+El **parámetro C** en SVM controla el balance entre la maximización de el margen y la clasificación incorrecta de los puntos de datos en el conjunto de entrenamiento. Un valor más bajo de C permite clasificar más puntos de datos correctamente en el conjunto de entrenamiento, pero puede conducir a un sobreajuste. Por otro lado, un valor más alto de C prioriza un margen más amplio, lo que puede resultar en una clasificación menos precisa en el conjunto de entrenamiento, pero puede generalizar mejor en datos no vistos.
+
+El **parámetro gamma** en SVM controla el alcance de influencia de un solo ejemplo de entrenamiento. Un valor más alto de gamma significa que los puntos de datos más cercanos tienen un peso más significativo en la definición de la frontera de decisión, lo que puede conducir a un modelo más complejo y propenso al sobreajuste. Por el contrario, un valor más bajo de gamma significa que el alcance de influencia es más amplio y la frontera de decisión es más suave, sin embargo, esto podría llevar a un modelo que no generalice bien las características de los datos. 
+
+```{r}
+source("./aux_scripts/procedimientosMachineLearning.R")
+
+svm_model <- function(formula, data) {
+  x <- model.matrix(formula, data)
+  y <- data[[all.vars(formula)[1]]]
+  svm(x = x, y = y, kernel = "sigmoid", cost = .1, gamma = .1, probability = TRUE)
+}
+
+res <- repeated_holdout(train_data = train_data, val_ratio = .2, 
+                        target_var = "PCR", n_iterations = 20, 
+                        threshold = 0.35, vars = "Estadio+Fenotipo+Grado+REst+RPro", 
+                        model_func=rf_model)
+performance_data <- evaluate_holdout(results = res$results)
+res$results
+performance_data$avg_metrics
+performance_data$plot
+performance_data$metrics
+```
+
 
 
 
@@ -310,24 +404,28 @@ svm_model <- function(formula, data) {
 }
 
 nn_model <- function(formula, data) {
-  nnet(formula = formula, data = data, size = 5, decay = 0.1, maxit = 100, trace = FALSE, linout = TRUE)
+  nnet(formula = formula, data = data, size = 5, 
+       decay = 0.1, maxit = 100, trace = FALSE, 
+       linout = TRUE, random_state=42)
 }
 
 
 
-res <- repeated_holdout(train_data = train_data, val_ratio = .2, 
-                        target_var = "PCR", n_iterations = 20, 
-                        threshold = 0.35, vars = "Estadio+Fenotipo+Grado+REst+RPro", 
-                        model_func=rf_model)
-performance_data <- evaluate_holdout(results = res$results)
-res$results
-performance_data$avg_metrics
-```
+doubleCV <- double_cross_validation(data = train_data, val_ratio = .2, target_var = "PCR",
+                                    outer_folds = 6, inner_folds = 5,
+                                    threshold = .35, vars = "Estadio+Fenotipo+Grado+REst+RPro",
+                                    model_func = nn_model)
 
-```{r}
+
+
+performance_data <- evaluate_double_cross_validation(results=doubleCV$results)
+doubleCV$results
+performance_data$avg_metrics
 performance_data$plot
 performance_data$metrics
 ```
+
+
 
 
 

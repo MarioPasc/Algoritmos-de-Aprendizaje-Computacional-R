@@ -44,6 +44,63 @@ train_test_split <- function(data, train_ratio, target_var, save_path) {
   )
 }
 
+evaluate_aparent_performance_model <- function(data, target_var, model_func, vars = NULL, threshold = 0.5) {
+  if (is.null(vars)) {
+    vars <- setdiff(names(data), target_var)
+  }
+  
+  # Convertir la variable objetivo en un factor con niveles "0" y "1"
+  data[[target_var]] <- factor(data[[target_var]], levels = c(0, 1))
+  
+  formula <- as.formula(paste(target_var, "~", paste(vars, collapse = "+")))
+  
+  # Entrenar el modelo con todo el conjunto de datos
+  model <- model_func(formula, data)
+  
+  # Realizar predicciones con el mismo conjunto de datos
+  if (inherits(model, "svm")) {
+    x <- model.matrix(formula, data)
+    predictions <- predict(model, newdata = x, probability = TRUE)
+    predictions <- attr(predictions, "probabilities")[, 2]
+  } else if (inherits(model, "nnet")) {
+    pred_type <- "raw"
+    predictions <- predict(model, newdata = data, type = pred_type)
+  } else if (inherits(model, "rpart")) {
+    predictions <- predict(model, newdata = data, type = "prob")[, 2]
+  } else {
+    predictions <- predict(model, newdata = data, type = "response")
+  }
+  
+  # Calcular la matriz de confusión
+  actual_classes <- data[[target_var]]
+  predicted_classes <- ifelse(predictions > threshold, 1, 0)
+  
+  confusion_matrix <- table(predicted_classes, actual_classes)
+
+  # Calcular las métricas de evaluación
+  tp <- confusion_matrix[2, 2]
+  tn <- confusion_matrix[1, 1]
+  fp <- confusion_matrix[2, 1]
+  fn <- confusion_matrix[1, 2]
+  
+  accuracy <- (tp + tn) / (tp + tn + fp + fn)
+  precision <- tp / (tp + fp)
+  recall <- tp / (tp + fn)
+  f1_score <- 2 * (precision * recall) / (precision + recall)
+  
+  # Calcular la curva ROC utilizando pROC
+  roc_obj <- pROC::roc(actual_classes, predictions)
+
+  # Devolver los resultados
+  list(confusion_matrix = confusion_matrix, accuracy = accuracy, precision = precision, 
+       recall = recall, f1_score = f1_score, roc_curve = roc_obj)
+}
+
+
+
+
+# =================== INNER VALIDATION ==========================
+
 
 repeated_holdout <- function(train_data, val_ratio, target_var, n_iterations, threshold = 0.5, vars = NULL, model_func = NULL) {
   if (is.null(vars)) {
@@ -91,6 +148,77 @@ repeated_holdout <- function(train_data, val_ratio, target_var, n_iterations, th
   list(results = results)
 }
 
+double_cross_validation <- function(data, val_ratio, target_var, outer_folds, inner_folds, threshold = 0.5, vars = NULL, model_func = NULL) {
+  if (is.null(vars)) {
+    vars <- "."
+  } else {
+    vars <- paste(vars, collapse = " + ")
+  }
+  
+  formula <- as.formula(paste(target_var, "~", vars))
+  
+  results <- data.frame(Fold = integer(0), TP = integer(0), TN = integer(0), FP = integer(0), FN = integer(0), stringsAsFactors = FALSE)
+  
+  # Outer cross-validation loop
+  for (i in 1:outer_folds) {
+    # Split data into training, validation, and test sets
+    test_index <- sample(nrow(data), round(nrow(data) / outer_folds))
+    test_data <- data[test_index, ]
+    train_val_data <- data[-test_index, ]
+    
+    best_model <- NULL
+    best_performance <- 0
+    
+    # Inner cross-validation loop
+    for (j in 1:inner_folds) {
+      val_index <- sample(nrow(train_val_data), round(nrow(train_val_data) * val_ratio))
+      val_data <- train_val_data[val_index, ]
+      train_data <- train_val_data[-val_index, ]
+      
+      model <- model_func(formula, train_data)
+      
+      if (inherits(model, "svm")) {
+        # Transform validation data for SVM
+        x_val <- model.matrix(formula, val_data)
+        predictions <- predict(model, newdata = x_val, probability = TRUE)
+        predictions <- attr(predictions, "probabilities")[, 2]
+      } else if (inherits(model, "nnet")) {
+        # Use original prediction code for NNET models
+        pred_type <- "raw"
+        predictions <- predict(model, newdata = val_data, type = pred_type)
+      } else if (inherits(model, "rpart")) {
+        # Use prediction code for rpart models
+        predictions <- predict(model, newdata = val_data, type = "prob")[, 2]
+      }
+      
+      actual_classes <- val_data[[target_var]]
+      predicted_classes <- ifelse(predictions > threshold, 1, 0)
+      
+      performance <- sum(predicted_classes == actual_classes) / length(actual_classes)
+      
+      if (performance > best_performance) {
+        best_model <- model
+        best_performance <- performance
+      }
+    }
+    
+    actual_classes <- test_data[[target_var]]
+    predicted_classes <- ifelse(predictions > threshold, 1, 0)
+    
+    tp <- sum(predicted_classes == 1 & actual_classes == 1)
+    tn <- sum(predicted_classes == 0 & actual_classes == 0)
+    fp <- sum(predicted_classes == 1 & actual_classes == 0)
+    fn <- sum(predicted_classes == 0 & actual_classes == 1)
+    
+    results <- rbind(results, data.frame(Fold = i, TP = tp, TN = tn, FP = fp, FN = fn))
+  }
+  
+  list(results = results)
+}
+
+#====================EVALUATE=====================================
+
+
 evaluate_holdout <- function(results) {
   # Calcular las métricas por iteración
   metrics <- data.frame(
@@ -123,4 +251,39 @@ evaluate_holdout <- function(results) {
   # Devolver los resultados
   list(metrics = metrics, avg_metrics = avg_metrics, plot = plot)
 }
+
+evaluate_double_cross_validation <- function(results) {
+  # Calcular las métricas por fold
+  metrics <- data.frame(
+    Fold = results$Fold,
+    Accuracy = (results$TP + results$TN) / (results$TP + results$TN + results$FP + results$FN),
+    Precision = results$TP / (results$TP + results$FP),
+    Recall = results$TP / (results$TP + results$FN),
+    F1Score = 2 * (results$TP / (results$TP + results$FP) * results$TP / (results$TP + results$FN)) /
+      (results$TP / (results$TP + results$FP) + results$TP / (results$TP + results$FN))
+  )
+  
+  # Calcular las métricas promedio
+  avg_metrics <- list(
+    Accuracy = mean(metrics$Accuracy),
+    Precision = mean(metrics$Precision),
+    Recall = mean(metrics$Recall),
+    F1Score = mean(metrics$F1Score)
+  )
+  
+  # Crear la gráfica
+  metrics_long <- reshape2::melt(metrics, id.vars = "Fold", variable.name = "Metric", value.name = "Value")
+  plot <- ggplot(metrics_long, aes(x = Fold, y = Value, color = Metric)) +
+    geom_line() +
+    scale_color_manual(values = c("Accuracy" = "blue", "Precision" = "red", "Recall" = "green", "F1Score" = "purple")) +
+    labs(title = "Metrics by Fold", x = "Fold", y = "Value") +
+    theme_minimal() +
+    ylim(0, 1) +
+    theme(legend.position = "bottom")
+  
+  # Devolver los resultados
+  list(metrics = metrics, avg_metrics = avg_metrics, plot = plot)
+}
+
+
 
