@@ -44,7 +44,6 @@ train_test_split <- function(data, train_ratio, target_var, save_path) {
   )
 }
 
-
 repeated_holdout <- function(train_data, val_ratio, target_var, n_iterations, threshold = 0.5, vars = NULL, model_func = NULL) {
   if (is.null(vars)) {
     vars <- "."
