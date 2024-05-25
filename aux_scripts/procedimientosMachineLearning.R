@@ -59,12 +59,10 @@ evaluate_aparent_performance_model <- function(data, target_var, model_func, var
   
   # Realizar predicciones con el mismo conjunto de datos
   if (inherits(model, "svm")) {
-    x <- model.matrix(formula, data)
-    predictions <- predict(model, newdata = x, probability = TRUE)
+    predictions <- predict(model, newdata = data, probability = TRUE)
     predictions <- attr(predictions, "probabilities")[, 2]
   } else if (inherits(model, "nnet")) {
-    pred_type <- "raw"
-    predictions <- predict(model, newdata = data, type = pred_type)
+    predictions <- predict(model, newdata = data, type = "raw")
   } else if (inherits(model, "rpart")) {
     predictions <- predict(model, newdata = data, type = "prob")[, 2]
   } else {
@@ -76,26 +74,39 @@ evaluate_aparent_performance_model <- function(data, target_var, model_func, var
   predicted_classes <- ifelse(predictions > threshold, 1, 0)
   
   confusion_matrix <- table(predicted_classes, actual_classes)
-
-  # Calcular las métricas de evaluación
-  tp <- confusion_matrix[2, 2]
-  tn <- confusion_matrix[1, 1]
-  fp <- confusion_matrix[2, 1]
-  fn <- confusion_matrix[1, 2]
+  
+  # Inicializar métricas de evaluación
+  tp <- 0
+  tn <- 0
+  fp <- 0
+  fn <- 0
+  
+  # Actualizar métricas de evaluación según la matriz de confusión
+  if ("1" %in% rownames(confusion_matrix) && "1" %in% colnames(confusion_matrix)) {
+    tp <- confusion_matrix["1", "1"]
+  }
+  if ("0" %in% rownames(confusion_matrix) && "0" %in% colnames(confusion_matrix)) {
+    tn <- confusion_matrix["0", "0"]
+  }
+  if ("1" %in% rownames(confusion_matrix) && "0" %in% colnames(confusion_matrix)) {
+    fp <- confusion_matrix["1", "0"]
+  }
+  if ("0" %in% rownames(confusion_matrix) && "1" %in% colnames(confusion_matrix)) {
+    fn <- confusion_matrix["0", "1"]
+  }
   
   accuracy <- (tp + tn) / (tp + tn + fp + fn)
-  precision <- tp / (tp + fp)
-  recall <- tp / (tp + fn)
-  f1_score <- 2 * (precision * recall) / (precision + recall)
+  precision <- ifelse(tp + fp > 0, tp / (tp + fp), 0)
+  recall <- ifelse(tp + fn > 0, tp / (tp + fn), 0)
+  f1_score <- ifelse(precision + recall > 0, 2 * (precision * recall) / (precision + recall), 0)
   
   # Calcular la curva ROC utilizando pROC
   roc_obj <- pROC::roc(actual_classes, predictions)
-
+  
   # Devolver los resultados
   list(confusion_matrix = confusion_matrix, accuracy = accuracy, precision = precision, 
        recall = recall, f1_score = f1_score, roc_curve = roc_obj)
 }
-
 
 
 
@@ -148,7 +159,9 @@ repeated_holdout <- function(train_data, val_ratio, target_var, n_iterations, th
   list(results = results)
 }
 
-double_cross_validation <- function(data, val_ratio, target_var, outer_folds, inner_folds, threshold = 0.5, vars = NULL, model_func = NULL) {
+library(caret)
+
+double_cross_validation <- function(data, target_var, outer_folds, inner_folds, threshold = 0.5, vars = NULL, model_func = NULL, hyperparams = NULL) {
   if (is.null(vars)) {
     vars <- "."
   } else {
@@ -157,64 +170,82 @@ double_cross_validation <- function(data, val_ratio, target_var, outer_folds, in
   
   formula <- as.formula(paste(target_var, "~", vars))
   
-  results <- data.frame(Fold = integer(0), TP = integer(0), TN = integer(0), FP = integer(0), FN = integer(0), stringsAsFactors = FALSE)
+  results <- data.frame(Fold = integer(0), TP = integer(0), TN = integer(0), FP = integer(0), FN = integer(0), BestParams = list(), stringsAsFactors = FALSE)
+  
+  # Create outer folds using createFolds
+  outer_fold_ids <- createFolds(data[[target_var]], k = outer_folds, list = TRUE, returnTrain = TRUE)
   
   # Outer cross-validation loop
   for (i in 1:outer_folds) {
-    # Split data into training, validation, and test sets
-    test_index <- sample(nrow(data), round(nrow(data) / outer_folds))
-    test_data <- data[test_index, ]
-    train_val_data <- data[-test_index, ]
+    # Split data into training and test sets using outer fold ids
+    train_val_data <- data[outer_fold_ids[[i]], ]
+    test_data <- data[-outer_fold_ids[[i]], ]
     
     best_model <- NULL
     best_performance <- 0
+    best_params <- NULL
+    
+    # Create inner folds using createFolds
+    inner_fold_ids <- createFolds(train_val_data[[target_var]], k = inner_folds, list = TRUE, returnTrain = TRUE)
     
     # Inner cross-validation loop
-    for (j in 1:inner_folds) {
-      val_index <- sample(nrow(train_val_data), round(nrow(train_val_data) * val_ratio))
-      val_data <- train_val_data[val_index, ]
-      train_data <- train_val_data[-val_index, ]
+    for (params in hyperparams) {
+      val_performance <- 0
       
-      model <- model_func(formula, train_data)
-      
-      if (inherits(model, "svm")) {
-        # Transform validation data for SVM
-        x_val <- model.matrix(formula, val_data)
-        predictions <- predict(model, newdata = x_val, probability = TRUE)
-        predictions <- attr(predictions, "probabilities")[, 2]
-      } else if (inherits(model, "nnet")) {
-        # Use original prediction code for NNET models
-        pred_type <- "raw"
-        predictions <- predict(model, newdata = val_data, type = pred_type)
-      } else if (inherits(model, "rpart")) {
-        # Use prediction code for rpart models
-        predictions <- predict(model, newdata = val_data, type = "prob")[, 2]
+      for (j in 1:inner_folds) {
+        # Split data into training and validation sets using inner fold ids
+        train_data <- train_val_data[inner_fold_ids[[j]], ]
+        val_data <- train_val_data[-inner_fold_ids[[j]], ]
+        
+        model <- do.call(model_func, c(list(formula = formula, data = train_data), params))
+        
+        if (inherits(model, "svm")) {
+          # Transform validation data for SVM
+          x_val <- model.matrix(formula, val_data)
+          predictions <- predict(model, newdata = x_val, probability = TRUE)
+          predictions <- attr(predictions, "probabilities")[, 2]
+        } else if (inherits(model, "nnet")) {
+          # Use original prediction code for NNET models
+          pred_type <- "raw"
+          predictions <- predict(model, newdata = val_data, type = pred_type)
+        } else if (inherits(model, "rpart")) {
+          # Use prediction code for rpart models
+          predictions <- predict(model, newdata = val_data, type = "prob")[, 2]
+        }
+        
+        actual_classes <- val_data[[target_var]]
+        predicted_classes <- ifelse(predictions > threshold, 1, 0)
+        
+        performance <- sum(predicted_classes == actual_classes) / length(actual_classes)
+        val_performance <- val_performance + performance
       }
       
-      actual_classes <- val_data[[target_var]]
-      predicted_classes <- ifelse(predictions > threshold, 1, 0)
+      val_performance <- val_performance / inner_folds
       
-      performance <- sum(predicted_classes == actual_classes) / length(actual_classes)
-      
-      if (performance > best_performance) {
+      if (val_performance > best_performance) {
         best_model <- model
-        best_performance <- performance
+        best_performance <- val_performance
+        best_params <- params
       }
     }
     
     actual_classes <- test_data[[target_var]]
-    predicted_classes <- ifelse(predictions > threshold, 1, 0)
+    predicted_classes <- ifelse(predict(best_model, newdata = test_data, type = "response") > threshold, 1, 0)
     
     tp <- sum(predicted_classes == 1 & actual_classes == 1)
     tn <- sum(predicted_classes == 0 & actual_classes == 0)
     fp <- sum(predicted_classes == 1 & actual_classes == 0)
     fn <- sum(predicted_classes == 0 & actual_classes == 1)
     
-    results <- rbind(results, data.frame(Fold = i, TP = tp, TN = tn, FP = fp, FN = fn))
+    results <- rbind(results, data.frame(Fold = i, TP = tp, TN = tn, FP = fp, FN = fn, BestParams = list(best_params)))
   }
   
   list(results = results)
 }
+
+
+
+
 
 #====================EVALUATE=====================================
 
