@@ -1929,6 +1929,13 @@ nn_model <- function(formula, data) {
 }
 
 
+res <- repeated_holdout(train_data = train_data, val_ratio = .2, 
+                        target_var = "PCR", n_iterations = 20, 
+                        threshold = 0.35, vars = "Estadio+Fenotipo+Grado+REst+RPro", 
+                        model_func=svm_model)
+performance_data <- evaluate_holdout(results = res$results)
+res$results
+performance_data$avg_metrics
 
 
 ```

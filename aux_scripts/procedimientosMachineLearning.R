@@ -44,6 +44,8 @@ train_test_split <- function(data, train_ratio, target_var, save_path) {
   )
 }
 
+<<<<<<< HEAD
+=======
 evaluate_aparent_performance_model <- function(data, target_var, model_func, vars = NULL, threshold = 0.5) {
   if (is.null(vars)) {
     vars <- setdiff(names(data), target_var)
@@ -113,6 +115,7 @@ evaluate_aparent_performance_model <- function(data, target_var, model_func, var
 # =================== INNER VALIDATION ==========================
 
 
+>>>>>>> a0a876908d605abf90d6fd786f8c250990512bc4
 repeated_holdout <- function(train_data, val_ratio, target_var, n_iterations, threshold = 0.5, vars = NULL, model_func = NULL) {
   if (is.null(vars)) {
     vars <- "."
