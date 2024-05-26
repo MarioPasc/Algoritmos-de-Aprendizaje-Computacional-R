@@ -3,6 +3,9 @@ library(ggplot2)
 library(pROC)
 library(nnet)
 library(e1071)
+library(class)
+library(mboost)
+
 
 train_test_split <- function(data, train_ratio, target_var, save_path) {
 
@@ -44,8 +47,7 @@ train_test_split <- function(data, train_ratio, target_var, save_path) {
   )
 }
 
-<<<<<<< HEAD
-=======
+
 evaluate_aparent_performance_model <- function(data, target_var, model_func, vars = NULL, threshold = 0.5) {
   if (is.null(vars)) {
     vars <- setdiff(names(data), target_var)
@@ -67,8 +69,19 @@ evaluate_aparent_performance_model <- function(data, target_var, model_func, var
     predictions <- predict(model, newdata = data, type = "raw")
   } else if (inherits(model, "rpart")) {
     predictions <- predict(model, newdata = data, type = "prob")[, 2]
-  } else {
+  } else if (inherits(model, "list") && "train_x" %in% names(model)) {
+    # KNN specific handling
+    train_x <- model$train_x
+    train_y <- model$train_y
+    test_x <- model.matrix(formula, data)[, -1]
+    predictions <- knn(train = train_x, test = test_x, cl = train_y, k = model$k, prob = TRUE)
+    predictions <- attr(predictions, "prob")
+  } else if (inherits(model, "glmboost")) {
     predictions <- predict(model, newdata = data, type = "response")
+  } else if (inherits(model, "naiveBayes")) {
+    predictions <- predict(model, newdata = data, type = "raw")[, 2]
+  } else {
+    stop("Modelo no soportado.")
   }
   
   # Calcular la matriz de confusión
@@ -112,10 +125,10 @@ evaluate_aparent_performance_model <- function(data, target_var, model_func, var
 
 
 
+
 # =================== INNER VALIDATION ==========================
 
 
->>>>>>> a0a876908d605abf90d6fd786f8c250990512bc4
 repeated_holdout <- function(train_data, val_ratio, target_var, n_iterations, threshold = 0.5, vars = NULL, model_func = NULL) {
   if (is.null(vars)) {
     vars <- "."
@@ -162,7 +175,6 @@ repeated_holdout <- function(train_data, val_ratio, target_var, n_iterations, th
   list(results = results)
 }
 
-library(caret)
 
 double_cross_validation <- function(data, target_var, outer_folds, inner_folds, threshold = 0.5, vars = NULL, model_func = NULL, hyperparams = NULL) {
   if (is.null(vars)) {
