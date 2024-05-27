@@ -4,7 +4,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 knitr::opts_chunk$set(message = FALSE)
 knitr::opts_chunk$set(warning = FALSE)
 
@@ -63,22 +63,48 @@ encode_data <- function(data, target_name) {
 
 data_numeric <- encode_data(data_original, "PCR")
 
-# Variables Asociación 
+# Todas las variables
+data_numeric$Her2P <- NULL
+data_factor$Her2 <- NULL
+data_original$Her2 <- NULL
+
+todas_variables_factor <- colnames(data_factor)[!colnames(data_factor) %in% "PCR"]
+todas_variables_numeric <- colnames(data_numeric)[!colnames(data_numeric) %in% "PCR"]
+
+# Variables Asociación
+
+select_associated_variables <- function(asociacion, total_variables_numeric) {
+  selected_variables <- c()
+  
+  for (assoc in asociacion) {
+    # Buscar variables que contengan el nombre en asociacion
+    matching_vars <- total_variables_numeric[grepl(assoc, total_variables_numeric)]
+    selected_variables <- c(selected_variables, matching_vars)
+  }
+  
+  return(selected_variables)
+}
+
+
+
 asociacion <- c("Estadio", "Fenotipo", "Grado", "REst", "RPro")
+asociacion_numeric <- select_associated_variables(asociacion, todas_variables_numeric)
 
+
+# Semillas
+seeds <- c(27, 3, 123, 50, 90)
 ```
-
 
 # Naive Bayes
 
 ## Rendimiento aparente
 
 ```{r}
-evaluate_aparent_performance_model_naiveBayes <- function(data, target_var, model_func, vars = NULL, threshold = 0.5) {
+evaluate_aparent_performance_model_naiveBayes <- function(data, target_var, model_func, vars = NULL, threshold, seed) {
   if (is.null(vars)) {
     vars <- setdiff(names(data), target_var)
   }
-  
+  set.seed(seed = seed)
   data[[target_var]] <- factor(data[[target_var]], levels = c(0, 1))
   formula <- as.formula(paste(target_var, "~", paste(vars, collapse = "+")))
   
@@ -108,17 +134,23 @@ evaluate_aparent_performance_model_naiveBayes <- function(data, target_var, mode
 naiveBayes_model <- function(formula, data) {
   naiveBayes(formula = formula, data = data)
 }
-
-resultadosAparentesNaiveBayes <- evaluate_aparent_performance_model_naiveBayes(data = data_factor, target_var = "PCR",
-                                                                    model_func = naiveBayes_model,
-                                                                    vars = ".",
-                                                                    threshold = .35)
+resultadosAparentesNaiveBayes <- evaluate_aparent_performance_model_naiveBayes(data = data_factor, 
+                                                                               target_var = "PCR",
+                                                                              model_func = naiveBayes_model,
+                                                                              vars = ".",
+                                                                              threshold = .35,
+                                                                              seed = 90)
+save(resultadosAparentesNaiveBayes, file = "RData_Files_Algorithms/NaiveBayes_Aparente.RData")
 ```
+
+
+
+
 ## 2CV todas las variables + 2CV Asociacion
 
 ```{r, message=FALSE, warning=FALSE}
-double_cross_validation_naiveBayes <- function(data, target_name, outer, inner, variables, threshold) {
-  set.seed(90)
+double_cross_validation_naiveBayes <- function(data, target_name, outer, inner, variables, threshold, seed) {
+  set.seed(seed)
   performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
                                     FP = integer(), FN = integer(), AUC = numeric(), stringsAsFactors = FALSE)
   
@@ -203,27 +235,62 @@ double_cross_validation_naiveBayes <- function(data, target_name, outer, inner, 
   return(performance_metrics)
 }
 
-# Todas las variables
-performance_naiveBayes_todasVariables <- double_cross_validation_naiveBayes(data = data_factor, 
-                                                             outer = 5,
-                                                             inner = 2,
-                                                             target_name = "PCR",
-                                                             variables = colnames(data_factor)[!colnames(data_factor) %in% "PCR"],
-                                                             threshold = 0.35)
-# Asociación
-performance_naiveBayes_asociacion <- double_cross_validation_naiveBayes(data = data_factor, 
-                                                             outer = 5,
-                                                             inner = 2,
-                                                             target_name = "PCR",
-                                                             variables = asociacion,
-                                                             threshold = 0.35)
 ```
+
+
+```{r}
+evaluate_with_seeds_NaiveBayes_Asociacion_Todas <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+}
+
+performance_naiveBayes_todasVariables <- evaluate_with_seeds_NaiveBayes_Asociacion_Todas(
+  evaluation_function = double_cross_validation_naiveBayes,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  vars = todas_variables_factor,
+  threshold = .35,
+  seeds = seeds)
+
+performance_naiveBayes_Asociacion <- evaluate_with_seeds_NaiveBayes_Asociacion_Todas(
+  evaluation_function = double_cross_validation_naiveBayes,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  vars = todas_variables_factor,
+  threshold = .35,
+  seeds = seeds)
+
+save(performance_naiveBayes_todasVariables, file = "RData_Files_Algorithms/NaiveBayes_TodasVariables.RData")
+save(performance_naiveBayes_Asociacion, file = "RData_Files_Algorithms/NaiveBayes_Asociacion.RData")
+
+```
+
 
 ## 2CV StepAUC
 
 ```{r, message=FALSE, warning=FALSE}
-double_cross_validation_naiveBayes_stepAUC <- function(data, target_name, outer, inner, variables, threshold) {
-  set.seed(90)
+double_cross_validation_naiveBayes_stepAUC <- function(data, target_name, outer, inner, variables, threshold, seed) {
+  set.seed(seed)
   performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
                                     FP = integer(), FN = integer(), AUC = numeric(),
                                     Best_Variables = character(), stringsAsFactors = FALSE)
@@ -370,19 +437,49 @@ double_cross_validation_naiveBayes_stepAUC <- function(data, target_name, outer,
   list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics)
 }
 
-performance_naiveBayes <- double_cross_validation_naiveBayes_stepAUC(data = data_factor, 
-                                                                     outer = 5,
-                                                                     inner = 2,
-                                                                     target_name = "PCR",
-                                                                     variables = colnames(data_factor)[!colnames(data_factor) %in% "PCR"],
-                                                                     threshold = .35)
 ```
+
+```{r}
+evaluate_with_seeds_NaiveBayes_stepAUC <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+  }
+
+performance_naiveBayes_stepAUC <- evaluate_with_seeds_NaiveBayes_stepAUC(
+  evaluation_function = double_cross_validation_naiveBayes_stepAUC,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  vars = todas_variables_factor,
+  target_var = "PCR",
+  threshold = .35,
+  seeds = seeds
+)
+save(performance_naiveBayes_stepAUC, file = "RData_Files_Algorithms/NaiveBayes_StepAUC.RData")
+```
+
 
 ## 2CV con Lasso
 
 ```{r, message=FALSE, warning=FALSE}
-double_cross_validation_naiveBayes_lasso <- function(data, target_name, outer, inner, variables, threshold) {
-  set.seed(90)
+double_cross_validation_naiveBayes_lasso <- function(data, target_name, outer, inner, variables, threshold, seed) {
+  set.seed(seed)
   performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
                                     FP = integer(), FN = integer(), AUC = numeric(),
                                     Best_Variables = character(), stringsAsFactors = FALSE)
@@ -554,15 +651,42 @@ double_cross_validation_naiveBayes_lasso <- function(data, target_name, outer, i
   
   list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics)
 }
-
-performance_naiveBayes <- double_cross_validation_naiveBayes_lasso(data = data_factor, 
-                                                                   outer = 5,
-                                                                   inner = 2,
-                                                                   target_name = "PCR",
-                                                                   variables = colnames(data_factor)[!colnames(data_factor) %in% "PCR"],
-                                                                   threshold = .35)
 ```
 
+```{r}
+evaluate_with_seeds_NaiveBayes_Lasso <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+  }
+
+performance_naiveBayes_lasso <- evaluate_with_seeds_NaiveBayes_Lasso(
+  evaluation_function = double_cross_validation_naiveBayes_lasso,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  vars = todas_variables_factor,
+  target_var = "PCR",
+  threshold = .35,
+  seeds = seeds
+)
+save(performance_naiveBayes_lasso, file = "RData_Files_Algorithms/NaiveBayes_Lasso.RData")
+```
 
 # Adaboost
 
@@ -609,14 +733,14 @@ resultadosAparentesAdaBoost <- evaluate_aparent_performance_model_adaboost(data 
                                                                            vars = ".",
                                                                            iterations = 100,
                                                                            threshold = 0.35)
+save(resultadosAparentesAdaBoost, file = "RData_Files_Algorithms/AdaBoost_Aparente.RData")
 ```
-
 
 ## 2CV todas las variables + 2CV Asociacion
 
 ```{r, message=FALSE, warning=FALSE}
-double_cross_validation_adaboost <- function(data, target_name, outer, inner, iterations, variables, threshold) {
-  set.seed(90)
+double_cross_validation_adaboost <- function(data, target_name, outer, inner, iterations, variables, threshold, seed) {
+  set.seed(seed)
   performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
                                     FP = integer(), FN = integer(), AUC = numeric(), 
                                     Best_Iteration = integer(), stringsAsFactors = FALSE)
@@ -708,30 +832,66 @@ double_cross_validation_adaboost <- function(data, target_name, outer, inner, it
   return(performance_metrics)
 }
 
-# Todas las variables
-performance_adaboost_todasvariables <- double_cross_validation_adaboost(data = data_factor, 
-                                                         outer = 5,
-                                                         inner = 2,
-                                                         target_name = "PCR",
-                                                         iterations = c(50, 100, 150),
-                                                         variables = colnames(data_factor)[!colnames(data_factor) %in% "PCR"],
-                                                         threshold = 0.35)
-# Asociacion
-performance_adaboost_asociacion <- double_cross_validation_adaboost(data = data_factor, 
-                                                         outer = 5,
-                                                         inner = 2,
-                                                         target_name = "PCR",
-                                                         iterations = c(50, 100, 150),
-                                                         variables = asociacion,
-                                                         threshold = 0.35)
-
 ```
+
+```{r}
+evaluate_with_seeds_AdaBoost_Asociacion_Todas <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, iterations) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner,
+                                   iterations, 
+                                   seed = seed)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+  }
+
+performance_adaboost_todasvariables <- evaluate_with_seeds_AdaBoost_Asociacion_Todas(
+  evaluation_function = double_cross_validation_adaboost,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  vars = todas_variables_factor,
+  threshold = .35,
+  seeds = seeds,
+  iterations = c(50, 100, 150, 200)
+)
+
+performance_adaboost_Asociacion <- evaluate_with_seeds_AdaBoost_Asociacion_Todas(
+  evaluation_function = double_cross_validation_adaboost,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  vars = asociacion,
+  threshold = .35,
+  seeds = seeds,
+  iterations = c(50, 100, 150, 200)
+)
+
+save(performance_adaboost_todasvariables, file = "RData_Files_Algorithms/AdaBoost_TodasVariables.RData")
+save(performance_adaboost_Asociacion, file = "RData_Files_Algorithms/AdaBoost_Asociacion.RData")
+```
+
+
 
 ## 2CV con StepAUC
 
 ```{r, message=FALSE, warning=FALSE}
-double_cross_validation_adaboost_stepAUC <- function(data, target_name, outer, inner, iterations, variables, threshold) {
-  set.seed(90)
+double_cross_validation_adaboost_stepAUC <- function(data, target_name, outer, inner, iterations, variables, threshold, seed) {
+  set.seed(seed)
   performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
                                     FP = integer(), FN = integer(), AUC = numeric(),
                                     Best_Iterations = integer(), Best_Variables = character(), stringsAsFactors = FALSE)
@@ -883,21 +1043,52 @@ double_cross_validation_adaboost_stepAUC <- function(data, target_name, outer, i
   list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics)
 }
 
-performance_adaboost <- double_cross_validation_adaboost_stepAUC(data = data_factor, 
-                                                                 outer = 5,
-                                                                 inner = 2,
-                                                                 target_name = "PCR",
-                                                                 iterations = c(50, 100, 150),
-                                                                 variables = colnames(data_factor)[!colnames(data_factor) %in% "PCR"], 
-                                                                 threshold = .35)
+```
+
+```{r}
+evaluate_with_seeds_AdaBoost_stepAUC <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, iterations) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed,
+                                   iterations = iterations)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+  }
+
+performance_adaboost_stepAUC <- evaluate_with_seeds_AdaBoost_stepAUC(
+  evaluation_function = double_cross_validation_adaboost_stepAUC,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  vars = todas_variables_factor,
+  threshold = .35,
+  iterations = c(50, 100, 150, 200),
+  seeds = seeds
+)
+
+save(performance_adaboost_stepAUC, file = "RData_Files_Algorithms/AdaBoost_StepAUC.RData")
 ```
 
 
 ## 2CV con Lasso
 
 ```{r}
-double_cross_validation_adaboost_lasso <- function(data, target_name, outer, inner, iterations, variables, threshold) {
-  set.seed(90)
+double_cross_validation_adaboost_lasso <- function(data, target_name, outer, inner, iterations, variables, threshold, seed) {
+  set.seed(seed)
   performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
                                     FP = integer(), FN = integer(), AUC = numeric(),
                                     Best_Iteration = integer(), 
@@ -1082,16 +1273,46 @@ double_cross_validation_adaboost_lasso <- function(data, target_name, outer, inn
   list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics)
 }
 
-
-performance_adaboost_lasso <- double_cross_validation_adaboost_lasso(data = data_factor, 
-                                                               outer = 5,
-                                                               inner = 2,
-                                                               target_name = "PCR",
-                                                               iterations = c(50, 100, 150),
-                                                               variables = colnames(data_factor)[!colnames(data_factor) %in% "PCR"],
-                                                               threshold = .35)
-
 ```
+
+```{r}
+evaluate_with_seeds_AdaBoost_Lasso <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, iterations) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed,
+                                   iterations = iterations)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+  }
+
+performance_adaboost_lasso <- evaluate_with_seeds_AdaBoost_stepAUC(
+  evaluation_function = double_cross_validation_adaboost_lasso,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  vars = todas_variables_factor,
+  threshold = .35,
+  iterations = c(50, 100, 150, 200),
+  seeds = seeds
+)
+
+save(performance_adaboost_lasso, file = "RData_Files_Algorithms/AdaBoost_Lasso.RData")
+```
+
 
 # Random Forest RF
 
@@ -1139,14 +1360,15 @@ resultadosAparentesRF <- evaluate_aparent_performance_model_rpart(data = data_fa
                                                              model_func = rf_model,
                                                              vars = ".",
                                                              threshold = .35)
-```
+save(resultadosAparentesRF, file = "RData_Files_Algorithms/RandomForest_Aparente.RData")
 
+```
 
 ## 2CV todas las variables + 2CV Asociacion
 
 ```{r, message=FALSE, warning=FALSE}
-double_cross_validation_rpart <- function(data, target_name, outer, inner, cp_values, minsplit_values, variables, threshold) {
-  set.seed(90)
+double_cross_validation_rpart <- function(data, target_name, outer, inner, cp_values, minsplit_values, variables, threshold, seed) {
+  set.seed(seed)
   performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
                                     FP = integer(), FN = integer(), AUC = numeric(),
                                     Best_cp = numeric(), Best_minsplit = integer(), stringsAsFactors = FALSE)
@@ -1200,10 +1422,17 @@ double_cross_validation_rpart <- function(data, target_name, outer, inner, cp_va
     pred_class <- ifelse(predictions > threshold, 1, 0)  # Asignar clases basadas en umbral
     confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
     
-    TP = confusion[2, 2]
-    TN = confusion[1, 1]
-    FP = confusion[1, 2]
-    FN = confusion[2, 1]
+    if (nrow(confusion) < 2 || ncol(confusion) < 2) {
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+    } else {
+      TP <- confusion[2, 2]
+      TN <- confusion[1, 1]
+      FP <- confusion[1, 2]
+      FN <- confusion[2, 1]
+    }
     auc = roc(outer_test_data[[target_name]], predictions)$auc
     
     metrics <- setNames(c(outer_index, TP, TN, FP, FN, auc, best_cp, best_minsplit), names(performance_metrics))
@@ -1212,33 +1441,69 @@ double_cross_validation_rpart <- function(data, target_name, outer, inner, cp_va
   
   return(performance_metrics)
 }
+```
 
-# Todas las variables
-performance_rpart_todasvariables <- double_cross_validation_rpart(data = data,
-                                                   outer = 5,
-                                                   inner = 2,
-                                                   target_name = "PCR",
-                                                   cp_values = c(0.001, 0.01, 0.1),
-                                                   minsplit_values = c(2, 5, 10, 15, 20),
-                                                   variables = colnames(data)[!colnames(data) %in% "PCR"],
-                                                   threshold = .35)
-# Asociacion
-performance_rpart_todasvariables <- double_cross_validation_rpart(data = data,
-                                                   outer = 5,
-                                                   inner = 2,
-                                                   target_name = "PCR",
-                                                   cp_values = c(0.001, 0.01, 0.1),
-                                                   minsplit_values = c(2, 5, 10, 15, 20),
-                                                   variables = asociacion,
-                                                   threshold = .35)
+```{r}
+evaluate_with_seeds_RandomForest_TodasVariables_Asociacion <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, cp_values, minsplit_values) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed,
+                                   cp_values = cp_values,
+                                   minsplit_values = minsplit_values)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+  }
+
+performance_rpart_todasvariables <- evaluate_with_seeds_RandomForest_TodasVariables_Asociacion(
+  evaluation_function = double_cross_validation_rpart,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  cp_values = c(0.001, 0.01, 0.1),
+  minsplit_values = c(2, 5, 10, 15, 20),
+  vars = todas_variables_factor,
+  threshold = .35,
+  seeds = seeds
+)
+
+performance_rpart_Asociacion <- evaluate_with_seeds_RandomForest_TodasVariables_Asociacion(
+  evaluation_function = double_cross_validation_rpart,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  cp_values = c(0.001, 0.01, 0.1),
+  minsplit_values = c(2, 5, 10, 15, 20),
+  vars = asociacion,
+  threshold = .35,
+  seeds = seeds
+)
+
+save(performance_rpart_todasvariables, file = "RData_Files_Algorithms/RandomForest_TodasVariables.RData")
+save(performance_rpart_Asociacion, file = "RData_Files_Algorithms/RandomForest_Asociacion.RData")
+
 ```
 
 
 ## 2CV con StepAUC
 
 ```{r, message=FALSE, warning=FALSE}
-double_cross_validation_rpart_stepAUC <- function(data, target_name, outer, inner, cps, minsplits, variables, threshold) {
-  set.seed(90)
+double_cross_validation_rpart_stepAUC <- function(data, target_name, outer, inner, cps, minsplits, variables, threshold, seed) {
+  set.seed(seed)
   performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
                                     FP = integer(), FN = integer(), AUC = numeric(),
                                     Best_CP = numeric(), Best_Minsplit = integer(), 
@@ -1395,22 +1660,55 @@ double_cross_validation_rpart_stepAUC <- function(data, target_name, outer, inne
   
   list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics)
 }
-
-performance_rf_stepAUC <- double_cross_validation_rpart_stepAUC(data = data_factor, 
-                                                        outer = 5,
-                                                        inner = 2,
-                                                        target_name = "PCR",
-                                                        cps = c(0.01, 0.05, 0.1),
-                                                        minsplits = c(5, 10, 15),
-                                                        variables = colnames(data)[!colnames(data) %in% "PCR"],
-                                                        threshold = .35)
 ```
+
+```{r}
+evaluate_with_seeds_RandomForest_StepAUC <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, cp_values, minsplit_values) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed,
+                                   cp_values = cp_values,
+                                   minsplit_values = minsplit_values)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+  }
+
+performance_rpart_StepAUC <- evaluate_with_seeds_RandomForest_StepAUC(
+  evaluation_function = double_cross_validation_rpart,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  cp_values = c(0.001, 0.01, 0.1),
+  minsplit_values = c(2, 5, 10, 15, 20),
+  vars = todas_variables_factor,
+  threshold = .35,
+  seeds = seeds
+)
+
+
+save(performance_rpart_StepAUC, file = "RData_Files_Algorithms/RandomForest_StepAUC.RData")
+```
+
 
 ## 2CV con Lasso
 
 ```{r, message=FALSE, warning=FALSE}
-double_cross_validation_rpart_Lasso <- function(data, target_name, outer, inner, cps, minsplits, variables, threshold) {
-  set.seed(90)
+double_cross_validation_rpart_Lasso <- function(data, target_name, outer, inner, cps, minsplits, variables, threshold, seed) {
+  set.seed(seed)
   performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
                                     FP = integer(), FN = integer(), AUC = numeric(),
                                     Best_cp = numeric(), Best_minsplit = numeric(), 
@@ -1600,16 +1898,49 @@ double_cross_validation_rpart_Lasso <- function(data, target_name, outer, inner,
   list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics)
 }
 
-
-performance_rf_lasso <- double_cross_validation_rpart_Lasso(data = data_factor, 
-                                                      outer = 5,
-                                                      inner = 2,
-                                                      target_name = "PCR",
-                                                      cps = c(0.01, 0.05, 0.1),
-                                                      minsplits = c(5, 10, 15),
-                                                      variables = colnames(data_factor)[!colnames(data_factor) %in% "PCR"], 
-                                                      threshold = .35)
 ```
+
+```{r}
+evaluate_with_seeds_RandomForest_lasso <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, cp_values, minsplit_values) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed,
+                                   cps = cp_values,
+                                   minsplits = minsplit_values)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+  }
+
+performance_rpart_lasso <- evaluate_with_seeds_RandomForest_lasso(
+  evaluation_function = double_cross_validation_rpart_Lasso,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  cp_values = c(0.001, 0.01, 0.1),
+  minsplit_values = c(2, 5, 10, 15, 20),
+  vars = todas_variables_factor,
+  threshold = .35,
+  seeds = seeds
+)
+
+
+save(performance_rpart_lasso, file = "RData_Files_Algorithms/RandomForest_Lasso.RData")
+```
+
 
 # KNN
 
@@ -1661,17 +1992,15 @@ resultadosAparentesKNN <- evaluate_aparent_performance_model_knn(data = data_num
                                                              model_func = knn_model,
                                                              vars = ".",
                                                              threshold = .35)
+save(resultadosAparentesKNN, file = "RData_Files_Algorithms/KNN_Aparentes.RData")
+
 ```
 
 ## 2CV todas las variables + 2CV Asociacion
 
 ```{r, message=FALSE, warning=FALSE}
-library(caret)
-library(class)
-library(pROC)
-
-double_cross_validation_knn <- function(data, target_name, outer, inner, ks, ls, variables, threshold) {
-  set.seed(90)
+double_cross_validation_knn <- function(data, target_name, outer, inner, ks, ls, variables, threshold, seed) {
+  set.seed(seed)
   performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
                                     FP = integer(), FN = integer(), AUC = numeric(),
                                     Best_k = integer(), Best_l = numeric(), stringsAsFactors = FALSE)
@@ -1781,32 +2110,68 @@ double_cross_validation_knn <- function(data, target_name, outer, inner, ks, ls,
   return(performance_metrics)
 }
 
-# Todas las variables
-performance_knn_todasvariables <- double_cross_validation_knn(data = data_numeric, 
-                                               outer = 5,
-                                               inner = 2,
-                                               target_name = "PCR",
-                                               ks = c(10, 16, 20, 25, 30, 32),
-                                               ls = c(0, 1, 2),
-                                               variables = colnames(data_numeric)[!colnames(data_numeric) %in% "PCR"],
-                                               threshold = 0.35)
-# Asociacion
-performance_knn_asociacion <- double_cross_validation_knn(data = data_numeric, 
-                                               outer = 5,
-                                               inner = 2,
-                                               target_name = "PCR",
-                                               ks = c(10, 16, 20, 25, 30, 32),
-                                               ls = c(0, 1, 2),
-                                               variables = asociacion,
-                                               threshold = 0.35)
-
 ```
+
+```{r}
+evaluate_with_seeds_KNN_TodasVariables_Asociacion <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, ks, ls) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed,
+                                   ks = ks,
+                                   ls = ls)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+  }
+
+performance_knn_todasvariables <- evaluate_with_seeds_KNN_TodasVariables_Asociacion(
+  evaluation_function = double_cross_validation_knn,
+  data = data_numeric,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  ks = c(10, 16, 20, 25, 30, 32),
+  ls = c(0, 1, 2),
+  vars = todas_variables_numeric,
+  threshold = .35,
+  seeds = seeds
+)
+
+performance_knn_Asociacion <- evaluate_with_seeds_KNN_TodasVariables_Asociacion(
+  evaluation_function = double_cross_validation_knn,
+  data = data_numeric,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  ks = c(10, 16, 20, 25, 30, 32),
+  ls = c(0, 1, 2),
+  vars = asociacion_numeric,
+  threshold = .35,
+  seeds = seeds
+)
+
+save(performance_knn_todasvariables, file = "RData_Files_Algorithms/KNN_TodasVariables.RData")
+save(performance_knn_Asociacion, file = "RData_Files_Algorithms/KNN_Asociacion.RData")
+```
+
 
 ## 2CV StepAUC
 
 ```{r, message=FALSE, warning=FALSE}
-double_cross_validation_knn_stepAUC <- function(data, target_name, outer, inner, ks, ls, variables, threshold) {
-  set.seed(90)
+double_cross_validation_knn_stepAUC <- function(data, target_name, outer, inner, ks, ls, variables, threshold, seed) {
+  set.seed(seed)
   performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
                                     FP = integer(), FN = integer(), AUC = numeric(),
                                     Best_k = integer(), Best_l = numeric(), Best_Variables = character(), stringsAsFactors = FALSE)
@@ -1976,22 +2341,54 @@ double_cross_validation_knn_stepAUC <- function(data, target_name, outer, inner,
   
   list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics)
 }
-
-performance_knn_stepAUC <- double_cross_validation_knn_stepAUC(data = data_numeric, 
-                                                       outer = 5,
-                                                       inner = 2,
-                                                       target_name = "PCR",
-                                                       ks = c(10, 16, 20, 25, 30, 32),
-                                                       ls = c(0, 1, 2),
-                                                       variables = colnames(data_numeric)[!colnames(data_numeric) %in% "PCR"], 
-                                                       threshold = .35)
 ```
+
+```{r}
+evaluate_with_seeds_KNN_stepAUC <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, ks, ls) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed,
+                                   ks = ks,
+                                   ls = ls)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+  }
+
+performance_knn_stepauc <- evaluate_with_seeds_KNN_stepAUC(
+  evaluation_function = double_cross_validation_knn_stepAUC,
+  data = data_numeric,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  ks = c(10, 16, 20, 25, 30, 32),
+  ls = c(0, 1, 2),
+  vars = todas_variables_numeric,
+  threshold = .35,
+  seeds = seeds
+)
+
+save(performance_knn_stepauc, file = "RData_Files_Algorithms/KNN_StepAUC.RData")
+```
+
 
 ## 2CV con Lasso
 
 ```{r, message=FALSE, warning=FALSE}
-double_cross_validation_knn_lasso <- function(data, target_name, outer, inner, ks, ls, variables, threshold) {
-  set.seed(90)
+double_cross_validation_knn_lasso <- function(data, target_name, outer, inner, ks, ls, variables, threshold, seed) {
+  set.seed(seed)
   performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
                                     FP = integer(), FN = integer(), AUC = numeric(),
                                     Best_k = integer(), Best_l = integer(), 
@@ -2041,7 +2438,7 @@ double_cross_validation_knn_lasso <- function(data, target_name, outer, inner, k
       # Seleccionamos las variables no nulas
       selected_vars <- rownames(lasso_coef)[lasso_coef[, 1] != 0]
       selected_vars <- setdiff(selected_vars, "(Intercept)")
-      cat("Selected variables by Lasso: ", paste(selected_vars, collapse=", "), "\n")
+      #cat("Selected variables by Lasso: ", paste(selected_vars, collapse=", "), "\n")
       return(selected_vars)
     }
     
@@ -2066,8 +2463,8 @@ double_cross_validation_knn_lasso <- function(data, target_name, outer, inner, k
             
             selected_vars <- select_vars_lasso(inner_train_data, target_name)
             formula <- as.formula(paste(target_name, "~", paste(selected_vars, collapse = "+")))
-            cat("Testing with formula: ", deparse(formula), "\n")
-            cat("Grid parameters - k: ", grid$k[params], ", l: ", grid$l[params], "\n")
+            #cat("Testing with formula: ", deparse(formula), "\n")
+            #cat("Grid parameters - k: ", grid$k[params], ", l: ", grid$l[params], "\n")
             
             result <- tryCatch({
               train_x <- inner_train_data[, selected_vars, drop = FALSE]
@@ -2080,7 +2477,7 @@ double_cross_validation_knn_lasso <- function(data, target_name, outer, inner, k
               prob_predictions <- ifelse(predictions == "1", prob_predictions, 1 - prob_predictions)
               roc_curve <- roc(inner_test_data[[target_name]], prob_predictions)
               auc_vals[inner_index] <- roc_curve$auc
-              cat("AUC for inner fold ", inner_index, ": ", roc_curve$auc, "\n")
+              #cat("AUC for inner fold ", inner_index, ": ", roc_curve$auc, "\n")
               
             }, error = function(e) {
               cat("Error with variables: ", paste(selected_vars, collapse = ", "), "\n")
@@ -2090,7 +2487,7 @@ double_cross_validation_knn_lasso <- function(data, target_name, outer, inner, k
           }
           
           mean_auc <- mean(auc_vals, na.rm = TRUE)
-          cat("Mean AUC for params - k: ", grid$k[params], ", l: ", grid$l[params], ": ", mean_auc, "\n")
+          #cat("Mean AUC for params - k: ", grid$k[params], ", l: ", grid$l[params], ": ", mean_auc, "\n")
           if (!is.na(mean_auc) && mean_auc > best_auc_in_step) {
             best_auc_in_step <- mean_auc
             best_inner_model <- list(k = grid$k[params], l = grid$l[params])
@@ -2198,17 +2595,48 @@ double_cross_validation_knn_lasso <- function(data, target_name, outer, inner, k
   
   list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics)
 }
-
-
-performance_knn_lasso <- double_cross_validation_knn_lasso(data = data_factor,
-                                                     outer = 5,
-                                                     inner = 2,
-                                                     target_name = "PCR",
-                                                     ks = c(10, 16, 20, 25, 30, 32),
-                                                     ls = c(0, 1, 2),
-                                                     variables = colnames(data_factor)[!colnames(data_factor) %in% "PCR"],
-                                                     threshold = .35)
 ```
+
+```{r}
+evaluate_with_seeds_KNN_lasso <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, ks, ls) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed,
+                                   ks = ks,
+                                   ls = ls)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+  }
+
+performance_knn_lasso <- evaluate_with_seeds_KNN_lasso(
+  evaluation_function = double_cross_validation_knn_lasso,
+  data = data_numeric,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  ks = c(10, 16, 20, 25, 30, 32),
+  ls = c(0, 1, 2),
+  vars = todas_variables_numeric,
+  threshold = .35,
+  seeds = seeds
+)
+
+save(performance_knn_lasso, file = "RData_Files_Algorithms/KNN_Lasso.RData")
+```
+
 
 # SVM
 
@@ -2262,14 +2690,16 @@ resultadosAparentesSVM <- evaluate_aparent_performance_model_svm(data = data_num
                                                              model_func = svm_model,
                                                              vars = ".",
                                                              threshold = .35)
+save(resultadosAparentesSVM, file = "RData_Files_Algorithms/SVM_Aparente.RData")
+
 ```
 
 ## 2CV con todas las variables + 2CV Asociacion
 
 ```{r, message=FALSE, warning=FALSE}
 
-double_cross_validation_svm <- function(data, target_name, outer, inner, kernels, costs, variables, threshold) {
-  set.seed(90)
+double_cross_validation_svm <- function(data, target_name, outer, inner, kernels, costs, variables, threshold, seed) {
+  set.seed(seed)
   performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
                                     FP = integer(), FN = integer(), AUC = numeric(),
                                     Best_Kernel = character(), Best_Cost = numeric(), stringsAsFactors = FALSE)
@@ -2362,31 +2792,68 @@ double_cross_validation_svm <- function(data, target_name, outer, inner, kernels
   return(performance_metrics)
 }
 
-# Todas las variables
-performance_svm_todasVariables <- double_cross_validation_svm(data = data_factor, 
-                                               outer = 5,
-                                               inner = 2,
-                                               target_name = "PCR",
-                                               kernels = c("linear"),
-                                               costs = c(100),
-                                               variables = colnames(data_factor)[!colnames(data_factor) %in% "PCR"],
-                                               threshold = 0.35)
-# Asociacion
-performance_svm_asociacion <- double_cross_validation_svm(data = data_factor, 
-                                               outer = 5,
-                                               inner = 2,
-                                               target_name = "PCR",
-                                               kernels = c("linear"),
-                                               costs = c(100),
-                                               variables = colnames(data_factor)[!colnames(data_factor) %in% "PCR"],
-                                               threshold = 0.35)
 ```
+
+```{r}
+evaluate_with_seeds_SVM_TodasVariables_Asociacion <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, kernels, costs) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed,
+                                   kernels = kernels,
+                                   costs = costs)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+  }
+
+performance_SVM_todasvariables <- evaluate_with_seeds_SVM_TodasVariables_Asociacion(
+  evaluation_function = double_cross_validation_svm,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  kernels = c("linear", "poly"),
+  costs = c(50, 100, 200),
+  vars = todas_variables_factor,
+  threshold = .35,
+  seeds = seeds
+)
+
+performance_svm_asociacion <- evaluate_with_seeds_SVM_TodasVariables_Asociacion(
+  evaluation_function = double_cross_validation_svm,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  kernels = c("linear", "poly"),
+  costs = c(50, 100, 200),
+  vars = asociacion,
+  threshold = .35,
+  seeds = seeds
+)
+
+save(performance_SVM_todasvariables, file = "RData_Files_Algorithms/SVM_TodasVariables.RData")
+save(performance_svm_asociacion, file = "RData_Files_Algorithms/SVM_Asociacion.RData")
+```
+
 
 ## 2CV StepAUC
 
 ```{r, message=FALSE, warning=FALSE}
-double_cross_validation_svm_stepAUC <- function(data, target_name, outer, inner, kernels, costs, variables, threshold) {
-  set.seed(90)
+double_cross_validation_svm_stepAUC <- function(data, target_name, outer, inner, kernels, costs, variables, threshold, seed) {
+  set.seed(seed)
   performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
                                     FP = integer(), FN = integer(), AUC = numeric(),
                                     Best_Kernel = character(), Best_Cost = numeric(), Best_Variables = character(), stringsAsFactors = FALSE)
@@ -2550,22 +3017,54 @@ double_cross_validation_svm_stepAUC <- function(data, target_name, outer, inner,
   
   list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics)
 }
-
-performance_svm <- double_cross_validation_svm_stepAUC(data = data_numeric, 
-                                                       outer = 5,
-                                                       inner = 2,
-                                                       target_name = "PCR",
-                                                       kernels = c("linear"),
-                                                       costs = c(100),
-                                                       variables = colnames(data_numeric)[!colnames(data_numeric) %in% "PCR"],
-                                                       threshold = .35)
 ```
+
+```{r}
+evaluate_with_seeds_SVM_stepAUC <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, kernels, costs) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed,
+                                   kernels = kernels,
+                                   costs = costs)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+  }
+
+performance_SVM_stepauc <- evaluate_with_seeds_SVM_stepAUC(
+  evaluation_function = double_cross_validation_svm_stepAUC,
+  data = data_numeric,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  kernels = c("linear", "poly"),
+  costs = c(50, 100, 200),
+  vars = todas_variables_numeric,
+  threshold = .35,
+  seeds = seeds
+)
+
+save(performance_SVM_stepauc, file = "RData_Files_Algorithms/SVM_StepAUC.RData")
+```
+
 
 ## 2CV con Lasso
 
 ```{r}
-double_cross_validation_svm_lasso <- function(data, target_name, outer, inner, kernels, costs, variables, threshold) {
-  set.seed(90)
+double_cross_validation_svm_lasso <- function(data, target_name, outer, inner, kernels, costs, variables, threshold, seed) {
+  set.seed(seed)
   performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
                                     FP = integer(), FN = integer(), AUC = numeric(),
                                     Best_Kernel = character(), Best_Cost = numeric(),
@@ -2756,16 +3255,46 @@ double_cross_validation_svm_lasso <- function(data, target_name, outer, inner, k
   
   list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics)
 }
+```
 
-# Uso de la función con los parámetros correspondientes
-performance_svm <- double_cross_validation_svm_lasso(data = data_factor, 
-                                                     outer = 5,
-                                                     inner = 2,
-                                                     target_name = "PCR",
-                                                     kernels = c("linear"),
-                                                     costs = c(100),
-                                                     variables = colnames(data_factor)[!colnames(data_factor) %in% "PCR"],
-                                                     threshold = .35)
+```{r}
+evaluate_with_seeds_SVM_lasso <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, kernels, costs) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed,
+                                   kernels = kernels,
+                                   costs = costs)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+  }
+
+performance_SVM_lasso <- evaluate_with_seeds_SVM_lasso(
+  evaluation_function = double_cross_validation_svm_lasso,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  kernels = c("linear", "poly"),
+  costs = c(50, 100, 200),
+  vars = todas_variables_factor,
+  threshold = .35,
+  seeds = seeds
+)
+
+save(performance_SVM_lasso, file = "RData_Files_Algorithms/SVM_Lasso.RData")
 ```
 
 
@@ -2817,13 +3346,15 @@ resultadosAparentesNN <- evaluate_aparent_performance_model_nnet(data = data_fac
                                                              model_func = nn_model,
                                                              vars = ".",
                                                              threshold = .35)
+save(resultadosAparentesNN, file = "RData_Files_Algorithms/ANN_Aparente.RData")
+
 ```
 
 ## 2CV todas las variables + 2CV Asociacion
 
 ```{r, message=FALSE, warning=FALSE}
-double_cross_validation_nnet <- function(data, target_name, outer, inner, sizes, decays, variables, threshold) {
-  set.seed(90)
+double_cross_validation_nnet <- function(data, target_name, outer, inner, sizes, decays, variables, threshold, seed) {
+  set.seed(seed)
   performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
                                     FP = integer(), FN = integer(), AUC = numeric(),
                                     Best_Size = integer(), Best_Decay = numeric(), stringsAsFactors = FALSE)
@@ -2912,33 +3443,68 @@ double_cross_validation_nnet <- function(data, target_name, outer, inner, sizes,
 
   return(performance_metrics)
 }
+```
 
-# Todas las variables
-performance_nn_todasVariables <- double_cross_validation_nnet(data = data_factor, 
-                                               outer = 5,
-                                               inner = 2,
-                                               target_name = "PCR",
-                                               sizes = c(5,10,15,20),
-                                               decays = c(0.1, 0.2),
-                                               variables = colnames(data_factor)[!colnames(data_factor) %in% "PCR"],
-                                               threshold=.35)
-# Asociación
-performance_nn_asociacion <- double_cross_validation_nnet(data = data_factor, 
-                                               outer = 5,
-                                               inner = 2,
-                                               target_name = "PCR",
-                                               sizes = c(5,10,15,20),
-                                               decays = c(0.1, 0.2),
-                                               variables = asociacion,
-                                               threshold=.35)
+```{r}
+evaluate_with_seeds_ANN_TodasVariables_Asociacion <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, sizes, decays) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed,
+                                   sizes = sizes,
+                                   decays = decays)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+  }
+
+performance_ANN_todasvariables <- evaluate_with_seeds_ANN_TodasVariables_Asociacion(
+  evaluation_function = double_cross_validation_nnet,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  sizes = c(5,10,15,20),
+  decays = c(0.1, 0.2, 0.3),
+  vars = todas_variables_factor,
+  threshold = .35,
+  seeds = seeds
+)
+
+performance_ANN_asociacion <- evaluate_with_seeds_ANN_TodasVariables_Asociacion(
+  evaluation_function = double_cross_validation_nnet,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  sizes = c(5,10,15,20),
+  decays = c(0.1, 0.2, 0.3),
+  vars = asociacion,
+  threshold = .35,
+  seeds = seeds
+)
+
+save(performance_ANN_todasvariables, file = "RData_Files_Algorithms/ANN_TodasVariables.RData")
+save(performance_ANN_asociacion, file = "RData_Files_Algorithms/ANN_Asociacion.RData")
 ```
 
 
 ## 2CV StepAUC
 
 ```{r, message=FALSE, warning=FALSE}
-double_cross_validation_nnet_stepAUC <- function(data, target_name, outer, inner, sizes, decays, variables, threshold) {
-  set.seed(90)
+double_cross_validation_nnet_stepAUC <- function(data, target_name, outer, inner, sizes, decays, variables, threshold, seed) {
+  set.seed(seed)
   performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
                                     FP = integer(), FN = integer(), AUC = numeric(),
                                     Best_Size = integer(), Best_Decay = numeric(), Best_Variables = character(), stringsAsFactors = FALSE)
@@ -3081,23 +3647,54 @@ double_cross_validation_nnet_stepAUC <- function(data, target_name, outer, inner
   
   list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics)
 }
-
-# Uso de la función con los parámetros correspondientes
-performance_nn_stepAUC <- double_cross_validation_nnet_stepAUC(data = data_factor, 
-                                                       outer = 5,
-                                                       inner = 2,
-                                                       target_name = "PCR",
-                                                       sizes = c(5, 10, 15, 20),
-                                                       decays = c(0.1, 0.2),
-                                                       variables = colnames(data_factor)[!colnames(data_factor) %in% "PCR"],
-                                                       threshold = .35)
 ```
+
+```{r}
+evaluate_with_seeds_ANN_StepAUC <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, sizes, decays) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed,
+                                   sizes = sizes,
+                                   decays = decays)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+  }
+
+performance_ANN_stepAUC <- evaluate_with_seeds_ANN_StepAUC(
+  evaluation_function = double_cross_validation_nnet_stepAUC,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  sizes = c(5,10,15,20),
+  decays = c(0.1, 0.2, 0.3),
+  vars = todas_variables_factor,
+  threshold = .35,
+  seeds = seeds
+)
+
+save(performance_ANN_stepAUC, file = "RData_Files_Algorithms/ANN_StepAUC.RData")
+```
+
 
 ## 2CV con Lasso
 
 ```{r, message=FALSE, warning=FALSE}
-double_cross_validation_nnet_lasso <- function(data, target_name, outer, inner, sizes, decays, threshold) {
-  set.seed(90)
+double_cross_validation_nnet_lasso <- function(data, target_name, outer, inner, sizes, decays, threshold, seed) {
+  set.seed(seed)
   performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
                                     FP = integer(), FN = integer(), AUC = numeric(),
                                     Best_Size = integer(), Best_Decay = numeric(), Best_Variables = character(), stringsAsFactors = FALSE)
@@ -3285,18 +3882,43 @@ double_cross_validation_nnet_lasso <- function(data, target_name, outer, inner, 
   
   list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics)
 }
-
-# Uso de la función con los parámetros correspondientes
-performance_nn_lasso <- double_cross_validation_nnet_lasso(data = data_factor, 
-                                                     outer = 5,
-                                                     inner = 2,
-                                                     target_name = "PCR",
-                                                     sizes = c(5, 10, 15, 20),
-                                                     decays = c(0.1, 0.2),
-                                                     threshold=.35)
-performance_nn_lasso
 ```
 
+```{r}
+evaluate_with_seeds_ANN_lasso <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, sizes, decays) {
+  results_list <- list()
 
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
 
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed,
+                                   sizes = sizes,
+                                   decays = decays)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+  }
+
+performance_ANN_lasso <- evaluate_with_seeds_ANN_lasso(
+  evaluation_function = double_cross_validation_nnet_lasso,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  sizes = c(5,10,15,20),
+  decays = c(0.1, 0.2, 0.3),
+  threshold = .35,
+  seeds = seeds
+)
+
+save(performance_ANN_lasso, file = "RData_Files_Algorithms/ANN_Lasso.RData")
+```
 

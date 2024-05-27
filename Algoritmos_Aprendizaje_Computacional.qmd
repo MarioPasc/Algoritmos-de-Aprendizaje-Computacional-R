@@ -319,6 +319,10 @@ El modelo final selecciona múltiples categorías dentro de las variables Estadi
 ## Métodos de Wrapped: StepAUC Backwards
 
 
+```{r}
+load("RData_Files_Algorithms/NaiveBayes_StepAUC.RData")
+resultadosAparentesNaiveBayes
+```
 
 
 # Modelos Predictivos Avanzados
