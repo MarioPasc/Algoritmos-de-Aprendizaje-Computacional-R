@@ -210,7 +210,7 @@ double_cross_validation_naiveBayes <- function(data, target_name, outer, inner, 
       cat("No valid model found for outer fold ", outer_index, "\n")
       next
     }
-
+    best_model <- naiveBayes(formula, data = outer_train_data)
     predictions <- predict(best_model, outer_test_data, type = "raw")[, 2]
     pred_class <- ifelse(predictions > threshold, "1", "0")
     confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
@@ -282,7 +282,6 @@ performance_naiveBayes_Asociacion <- evaluate_with_seeds_NaiveBayes_Asociacion_T
 
 save(performance_naiveBayes_todasVariables, file = "RData_Files_Algorithms/NaiveBayes_TodasVariables.RData")
 save(performance_naiveBayes_Asociacion, file = "RData_Files_Algorithms/NaiveBayes_Asociacion.RData")
-
 ```
 
 
@@ -403,7 +402,9 @@ double_cross_validation_naiveBayes_stepAUC <- function(data, target_name, outer,
     }
     
     best_inner_auc <- mean(inner_auc_vals, na.rm = TRUE)
-    
+    best_model <- naiveBayes(as.formula(paste(target_name, "~", paste(best_vars, collapse = "+"))),
+                         data = outer_train_data)
+
     predictions <- predict(best_model, outer_test_data, type = "raw")[, 2]
     pred_class <- ifelse(predictions > threshold, "1", "0")
     confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
@@ -618,7 +619,7 @@ double_cross_validation_naiveBayes_lasso <- function(data, target_name, outer, i
     
     best_inner_auc <- mean(inner_auc_vals, na.rm = TRUE)
     cat("Best inner AUC: ", best_inner_auc, "\n")
-    
+    best_model <- naiveBayes(as.formula(paste(target_name, "~", paste(best_vars, collapse = "+"))), data = outer_train_data)
     predictions <- predict(best_model, outer_test_data, type = "raw")[,2]
     pred_class <- ifelse(predictions > threshold, 1, 0)  # Asignar clases basadas en umbral
     confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
@@ -807,7 +808,9 @@ double_cross_validation_adaboost <- function(data, target_name, outer, inner, it
       cat("No valid model found for outer fold ", outer_index, "\n")
       next
     }
-
+    # Reentrenar el mejor modelo con todos los datos de outer_train_data
+    best_model <- blackboost(formula, data = outer_train_data, family = Binomial(), control = boost_control(mstop = best_iteration))
+    
     predictions <- predict(best_model, outer_test_data, type = "response")
     pred_class <- ifelse(predictions > threshold, "1", "0")
     confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
@@ -1009,7 +1012,10 @@ double_cross_validation_adaboost_stepAUC <- function(data, target_name, outer, i
     }
     
     best_inner_auc <- mean(inner_auc_vals, na.rm = TRUE)
-    
+    # Reentrenar el mejor modelo con todos los datos de outer_train_data
+    best_model <- glmboost(as.formula(paste(target_name, "~", paste(best_vars, collapse = "+"))),
+                           data = outer_train_data, family = Binomial(),
+                           control = boost_control(mstop = best_iterations))
     predictions <- predict(best_model, outer_test_data, type = "response")
     pred_class <- ifelse(predictions > threshold, "1", "0")
     confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
@@ -1239,7 +1245,10 @@ double_cross_validation_adaboost_lasso <- function(data, target_name, outer, inn
     
     best_inner_auc <- mean(inner_auc_vals, na.rm = TRUE)
     cat("Best inner AUC: ", best_inner_auc, "\n")
-    
+    # Reentrenar el mejor modelo con todos los datos de outer_train_data
+    best_model <- glmboost(as.formula(paste(target_name, "~", paste(best_vars, collapse = "+"))),
+                           data = outer_train_data, family = Binomial(),
+                           control = boost_control(mstop = best_iteration))
     predictions <- predict(best_model, outer_test_data, type = "response")
     pred_class <- ifelse(predictions > threshold, 1, 0)  # Asignar clases basadas en umbral
     confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
@@ -1298,7 +1307,7 @@ evaluate_with_seeds_AdaBoost_Lasso <-
   return(results_list)
   }
 
-performance_adaboost_lasso <- evaluate_with_seeds_AdaBoost_stepAUC(
+performance_adaboost_lasso <- evaluate_with_seeds_AdaBoost_Lasso(
   evaluation_function = double_cross_validation_adaboost_lasso,
   data = data_factor,
   outer = 5,
@@ -1417,6 +1426,9 @@ double_cross_validation_rpart <- function(data, target_name, outer, inner, cp_va
         best_minsplit = grid$minsplit[params]
       }
     }
+    
+    best_model <- rpart(formula = as.formula(paste(target_name, "~", paste(variables, collapse = "+"))),
+                       data = outer_test_data, control = rpart.control(cp = best_cp, minsplit = best_minsplit))
     
     predictions <- predict(best_model, outer_test_data, type = "prob")[, 2]
     pred_class <- ifelse(predictions > threshold, 1, 0)  # Asignar clases basadas en umbral
@@ -1543,36 +1555,36 @@ double_cross_validation_rpart_stepAUC <- function(data, target_name, outer, inne
       best_inner_minsplit <- NULL
       best_inner_vars <- current_vars
       improved <- TRUE
-      
+    
       while (improved && length(current_vars) > 1) {
         improved <- FALSE
         best_auc_in_step <- best_inner_auc
-        
+    
         for (var in current_vars) {
           temp_vars <- setdiff(current_vars, var)
           inner_auc <- numeric()
-          
+    
           for (params in 1:nrow(grid)) {
             auc_vals <- numeric()
-            
+    
             for (inner_index in seq_along(inner_folds)) {
-              inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
-              inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
-              
+              inner_train_data <- data[-inner_folds[[inner_index]], ]
+              inner_test_data <- data[inner_folds[[inner_index]], ]
+    
               result <- tryCatch({
                 model <- rpart(as.formula(paste(target_name, "~", paste(temp_vars, collapse = "+"))),
                                data = inner_train_data, control = rpart.control(cp = grid$cp[params], minsplit = grid$minsplit[params]))
-                
+    
                 predictions <- predict(model, inner_test_data, type = "prob")[, 2]
                 roc_curve <- roc(inner_test_data[[target_name]], predictions)
                 auc_vals[inner_index] <- roc_curve$auc
-                
+    
               }, error = function(e) {
                 cat("Error with variables:", paste(temp_vars, collapse = ", "), "\n")
                 auc_vals[inner_index] <- 0
               })
             }
-            
+    
             if (mean(auc_vals, na.rm = TRUE) > best_auc_in_step) {
               best_auc_in_step <- mean(auc_vals, na.rm = TRUE)
               best_inner_model <- model
@@ -1583,7 +1595,7 @@ double_cross_validation_rpart_stepAUC <- function(data, target_name, outer, inne
             }
           }
         }
-        
+    
         if (improved) {
           current_vars <- best_inner_vars
           best_inner_auc <- best_auc_in_step
@@ -1591,11 +1603,12 @@ double_cross_validation_rpart_stepAUC <- function(data, target_name, outer, inne
           cat("AUC: ", paste(best_inner_auc), "\n")
         }
       }
-      
+    
       list(model = best_inner_model, auc = best_inner_auc, 
            cp = best_inner_cp, minsplit = best_inner_minsplit, 
            vars = best_inner_vars)
     }
+
     
     best_result <- stepAUC(variables, outer_train_data, target_name, grid, inner_folds)
     best_model <- best_result$model
@@ -1609,11 +1622,11 @@ double_cross_validation_rpart_stepAUC <- function(data, target_name, outer, inne
     for (inner_index in seq_along(inner_folds)) {
       inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
       inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
-      
+    
       predictions <- predict(best_model, inner_test_data, type = "prob")[, 2]
       roc_curve <- roc(inner_test_data[[target_name]], predictions)
       inner_auc_vals[inner_index] <- roc_curve$auc
-
+    
       pred_class <- ifelse(predictions > threshold, "1", "0")
       confusion <- table(Actual = inner_test_data[[target_name]], Predicted = pred_class)
       TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
@@ -1621,13 +1634,17 @@ double_cross_validation_rpart_stepAUC <- function(data, target_name, outer, inne
       FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
       FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
       auc <- roc_curve$auc
-      
+    
       inner_metrics <- setNames(c(outer_index, inner_index, TP, TN, FP, FN, auc), names(inner_fold_metrics))
       inner_fold_metrics <- rbind(inner_fold_metrics, as.data.frame(t(inner_metrics)))
     }
+
     
     best_inner_auc <- mean(inner_auc_vals, na.rm = TRUE)
-    
+    # Reentrenar el mejor modelo con todos los datos de outer_train_data
+    best_model <- rpart(as.formula(paste(target_name, "~", paste(best_vars, collapse = "+"))),
+                    data = outer_train_data, control = rpart.control(cp = best_cp, minsplit = best_minsplit))
+
     predictions <- predict(best_model, outer_test_data, type = "prob")[, 2]
     pred_class <- ifelse(predictions > threshold, "1", "0")
     confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
@@ -1658,7 +1675,7 @@ double_cross_validation_rpart_stepAUC <- function(data, target_name, outer, inne
                 TP, TN, FP, FN, auc, best_cp, best_minsplit, paste(best_vars, collapse = ",")))
   }
   
-  list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics)
+  return(list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics))
 }
 ```
 
@@ -1678,8 +1695,8 @@ evaluate_with_seeds_RandomForest_StepAUC <-
                                    outer = outer, 
                                    inner = inner, 
                                    seed = seed,
-                                   cp_values = cp_values,
-                                   minsplit_values = minsplit_values)
+                                   cps = cp_values,
+                                   minsplits = minsplit_values)
     results_list[[paste0("seed_", seed)]] <- results
   }
 
@@ -1687,7 +1704,7 @@ evaluate_with_seeds_RandomForest_StepAUC <-
   }
 
 performance_rpart_StepAUC <- evaluate_with_seeds_RandomForest_StepAUC(
-  evaluation_function = double_cross_validation_rpart,
+  evaluation_function = double_cross_validation_rpart_stepAUC,
   data = data_factor,
   outer = 5,
   inner = 2,
@@ -1698,7 +1715,7 @@ performance_rpart_StepAUC <- evaluate_with_seeds_RandomForest_StepAUC(
   threshold = .35,
   seeds = seeds
 )
-
+performance_rpart_StepAUC
 
 save(performance_rpart_StepAUC, file = "RData_Files_Algorithms/RandomForest_StepAUC.RData")
 ```
@@ -1864,7 +1881,9 @@ double_cross_validation_rpart_Lasso <- function(data, target_name, outer, inner,
     
     best_inner_auc <- mean(inner_auc_vals, na.rm = TRUE)
     cat("Best inner AUC: ", best_inner_auc, "\n")
-    
+    best_model <- rpart(as.formula(paste(target_name, "~", paste(best_vars, collapse = "+"))),
+                        data = outer_train_data, method = "class", 
+                        control = rpart.control(cp = best_cp, minsplit = best_minsplit))
     predictions <- predict(best_model, outer_test_data, type = "prob")[,2]
     pred_class <- ifelse(predictions > threshold, 1, 0)  # Asignar clases basadas en umbral
     confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
@@ -2075,9 +2094,14 @@ double_cross_validation_knn <- function(data, target_name, outer, inner, ks, ls,
       next
     }
 
+    # Reentrenar el mejor modelo con todos los datos de outer_train_data
+    train_x <- outer_train_data[, variables, drop = FALSE]
+    train_y <- outer_train_data[[target_name]]
+    
+    # Evaluar el mejor modelo en el conjunto de prueba del outer fold
     test_x <- outer_test_data[, variables, drop = FALSE]
     test_y <- outer_test_data[[target_name]]
-    predictions <- knn(train = best_model$train_x, test = test_x, cl = best_model$train_y, k = best_k, prob = TRUE)
+    predictions <- knn(train = train_x, test = test_x, cl = train_y, k = best_k, prob = TRUE)
     probabilities <- attr(predictions, "prob")
     probabilities <- ifelse(predictions == "1", probabilities, 1 - probabilities)
     pred_class <- ifelse(probabilities > threshold, "1", "0")
@@ -2269,6 +2293,7 @@ double_cross_validation_knn_stepAUC <- function(data, target_name, outer, inner,
       
     }
     
+    # Después de seleccionar el mejor modelo y parámetros en los inner folds
     best_result <- stepAUC(variables, outer_train_data, target_name, grid, inner_folds)
     best_model <- best_result$model
     best_auc <- best_result$auc
@@ -2306,6 +2331,12 @@ double_cross_validation_knn_stepAUC <- function(data, target_name, outer, inner,
     
     best_inner_auc <- mean(inner_auc_vals, na.rm = TRUE)
     
+    # Reentrenar el mejor modelo con todos los datos de outer_train_data
+    train_x <- outer_train_data[, best_vars, drop = FALSE]
+    train_y <- outer_train_data[[target_name]]
+    best_model <- list(train_x = train_x, train_y = train_y, k = best_k, l = best_l)
+    
+    # Evaluar el mejor modelo en el conjunto de prueba del outer fold
     test_x <- outer_test_data[, best_vars, drop = FALSE]
     test_y <- outer_test_data[[target_name]]
     predictions <- knn(train = best_model$train_x, test = test_x, cl = best_model$train_y, k = best_k, l = best_l, prob = TRUE)
@@ -2556,16 +2587,19 @@ double_cross_validation_knn_lasso <- function(data, target_name, outer, inner, k
     best_inner_auc <- mean(inner_auc_vals, na.rm = TRUE)
     cat("Best inner AUC: ", best_inner_auc, "\n")
     
+    # Reentrenar el mejor modelo con todos los datos de outer_train_data
     train_x <- outer_train_data[, best_vars, drop = FALSE]
-    test_x <- outer_test_data[, best_vars, drop = FALSE]
     train_y <- outer_train_data[[target_name]]
-    test_y <- outer_test_data[[target_name]]
+    best_model <- list(train_x = train_x, train_y = train_y, k = best_k, l = best_l)
     
-    predictions <- knn(train_x, test_x, train_y, k = best_k, l = best_l, prob = TRUE)
+    # Evaluar el mejor modelo en el conjunto de prueba del outer fold
+    test_x <- outer_test_data[, best_vars, drop = FALSE]
+    test_y <- outer_test_data[[target_name]]
+    predictions <- knn(train = best_model$train_x, test = test_x, cl = best_model$train_y, k = best_k, l = best_l, prob = TRUE)
     prob_predictions <- attr(predictions, "prob")
     prob_predictions <- ifelse(predictions == "1", prob_predictions, 1 - prob_predictions)
-    pred_class <- ifelse(prob_predictions > threshold, 1, 0)  # Asignar clases basadas en umbral
-    confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
+    pred_class <- ifelse(prob_predictions > threshold, 1, 0)
+    confusion <- table(Actual = test_y, Predicted = pred_class)
     
     if (nrow(confusion) < 2 || ncol(confusion) < 2) {
       TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
@@ -2765,7 +2799,9 @@ double_cross_validation_svm <- function(data, target_name, outer, inner, kernels
         best_cost <- grid$cost[params]
       }
     }
-
+    best_model <- svm(reformulate(variables, target_name), 
+                      data = outer_train_data, kernel = best_kernel, cost = best_cost, 
+                      probability = TRUE)
     predictions <- predict(best_model, outer_test_data, probability = TRUE)
     prob <- attr(predictions, "probabilities")[, 2]
     pred_class <- ifelse(prob > threshold, 1, 0)  # Asignar clases basadas en umbral
@@ -2959,7 +2995,7 @@ double_cross_validation_svm_stepAUC <- function(data, target_name, outer, inner,
     best_cost <- best_result$cost
     best_vars <- best_result$vars
 
-    # Evaluar el mejor modelo en el validation split del inner loop
+    # Evaluar el mejor modelo en el validation split del inner loop 
     inner_auc_vals <- numeric()
     for (inner_index in seq_along(inner_folds)) {
       inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
@@ -2983,7 +3019,10 @@ double_cross_validation_svm_stepAUC <- function(data, target_name, outer, inner,
     }
     
     best_inner_auc <- mean(inner_auc_vals, na.rm = TRUE)
-    
+    # Reentrenar el mejor modelo con todos los datos de outer_train_data
+    best_model <- svm(as.formula(paste(target_name, "~", paste(best_vars, collapse = "+"))),
+                      data = outer_train_data, kernel = best_kernel, cost = best_cost, 
+                      probability = TRUE)
     predictions <- predict(best_model, newdata = outer_test_data, probability = TRUE)
     predictions <- attr(predictions, "probabilities")[, 2]
     pred_class <- ifelse(predictions > threshold, 1, 0)  # Asignar clases basadas en umbral
@@ -3055,7 +3094,7 @@ performance_SVM_stepauc <- evaluate_with_seeds_SVM_stepAUC(
   threshold = .35,
   seeds = seeds
 )
-
+performance_SVM_stepauc
 save(performance_SVM_stepauc, file = "RData_Files_Algorithms/SVM_StepAUC.RData")
 ```
 
@@ -3221,7 +3260,9 @@ double_cross_validation_svm_lasso <- function(data, target_name, outer, inner, k
     
     best_inner_auc <- mean(inner_auc_vals, na.rm = TRUE)
     cat("Best inner AUC: ", best_inner_auc, "\n")
-    
+    best_model <- svm(as.formula(paste(target_name, "~", paste(best_vars, collapse = "+"))),
+                      data = outer_train_data, kernel = best_kernel, cost = best_cost, 
+                      probability = TRUE)
     predictions <- predict(best_model, outer_test_data, probability = TRUE)
     predictions_prob <- attr(predictions, "probabilities")[, 2]
     pred_class <- ifelse(predictions_prob > threshold, "1", "0")  # Asignar clases basadas en umbral
@@ -3419,6 +3460,7 @@ double_cross_validation_nnet <- function(data, target_name, outer, inner, sizes,
         best_decay <- grid$decay[params]
       }
     }
+    model <- nnet(formula, data = outer_train_data, size = best_size, decay = best_decay, linout = FALSE, maxit = 200)
 
     predictions <- predict(best_model, outer_test_data, type = "raw")
     pred_class <- ifelse(predictions > threshold, 1, 0)  # Asignar clases basadas en umbral
@@ -3609,11 +3651,15 @@ double_cross_validation_nnet_stepAUC <- function(data, target_name, outer, inner
     }
     
     best_result <- stepAUC(variables, outer_train_data, target_name, grid, inner_folds)
-    best_model <- best_result$model
     best_auc <- best_result$auc
     best_size <- best_result$size
     best_decay <- best_result$decay
     best_vars <- best_result$vars
+    
+    # Reentrenar el mejor modelo con todos los datos de outer_train_data
+    best_model <- nnet(as.formula(paste(target_name, "~", paste(best_vars, collapse = "+"))),
+                       data = outer_train_data, size = best_size, decay = best_decay, 
+                       linout = FALSE, maxit = 200, trace = FALSE)
     
     predictions <- predict(best_model, outer_test_data, type = "raw")
     pred_class <- ifelse(predictions > threshold, 1, 0)  # Asignar clases basadas en umbral
@@ -3849,7 +3895,10 @@ double_cross_validation_nnet_lasso <- function(data, target_name, outer, inner, 
     
     best_inner_auc <- mean(inner_auc_vals, na.rm = TRUE)
     #cat("Best inner AUC: ", best_inner_auc, "\n")
-    
+    # Reentrenar el mejor modelo con todos los datos de outer_train_data
+    best_model <- nnet(as.formula(paste(target_name, "~", paste(best_vars, collapse = "+"))),
+                       data = outer_train_data, size = best_size, decay = best_decay, 
+                       linout = FALSE, maxit = 200, trace = FALSE)
     predictions <- predict(best_model, outer_test_data, type = "raw")
     pred_class <- ifelse(predictions > threshold, 1, 0)  # Asignar clases basadas en umbral
     confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)

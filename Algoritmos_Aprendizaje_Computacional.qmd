@@ -816,11 +816,10 @@ El **parámetro gamma** en SVM controla el alcance de influencia de un solo ejem
 
 ## SVM CON TODAS LAS VARIABLES
 ```{r, message=FALSE, warning=FALSE}
-# Función para realizar doble validación cruzada 5x2 con SVM
-double_cross_validation_svm <- function(data, target_name, outer, inner, kernels, costs) {
-  set.seed(90)
-  performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(), 
-                                    FP = integer(), FN = integer(), AUC = numeric(), 
+double_cross_validation_svm <- function(data, target_name, outer, inner, kernels, costs, variables, threshold, seed) {
+  set.seed(seed)
+  performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
+                                    FP = integer(), FN = integer(), AUC = numeric(),
                                     Best_Kernel = character(), Best_Cost = numeric(), stringsAsFactors = FALSE)
 
   data[[target_name]] <- as.factor(data[[target_name]])
@@ -831,12 +830,12 @@ double_cross_validation_svm <- function(data, target_name, outer, inner, kernels
     outer_test_data <- data[outer_folds[[outer_index]], ]
 
     cat(sprintf("Outer Fold %d\n", outer_index))
-    cat("Training Data - Class 0: ", sum(outer_train_data[[target_name]] == 0), "\n")
-    cat("Training Data - Class 1: ", sum(outer_train_data[[target_name]] == 1), "\n")
-    cat("Testing Data - Class 0: ", sum(outer_test_data[[target_name]] == 0), "\n")
-    cat("Testing Data - Class 1: ", sum(outer_test_data[[target_name]] == 1), "\n")
+    cat("Training Data - Class 0: ", sum(outer_train_data[[target_name]] == "0"), "\n")
+    cat("Training Data - Class 1: ", sum(outer_train_data[[target_name]] == "1"), "\n")
+    cat("Testing Data - Class 0: ", sum(outer_test_data[[target_name]] == "0"), "\n")
+    cat("Testing Data - Class 1: ", sum(outer_test_data[[target_name]] == "1"), "\n")
     
-    if (sum(outer_train_data[[target_name]] == 0) == 0 || sum(outer_train_data[[target_name]] == 1) == 0) {
+    if (sum(outer_train_data[[target_name]] == "0") == 0 || sum(outer_train_data[[target_name]] == "1") == 0) {
       cat("Skipping outer fold due to lack of class diversity\n")
       next
     }
@@ -856,13 +855,13 @@ double_cross_validation_svm <- function(data, target_name, outer, inner, kernels
         inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
         inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
 
-        if (sum(inner_train_data[[target_name]] == 0) == 0 || sum(inner_train_data[[target_name]] == 1) == 0) {
+        if (sum(inner_train_data[[target_name]] == "0") == 0 || sum(inner_train_data[[target_name]] == "1") == 0) {
           cat("Skipping inner fold due to lack of class diversity\n")
           next
         }
 
         result <- tryCatch({
-          model <- svm(reformulate(colnames(data)[!colnames(data) %in% target_name], target_name), 
+          model <- svm(reformulate(variables, target_name), 
                        data = inner_train_data, kernel = grid$kernel[params], cost = grid$cost[params], 
                        probability = TRUE)
 
@@ -884,10 +883,117 @@ double_cross_validation_svm <- function(data, target_name, outer, inner, kernels
         best_cost <- grid$cost[params]
       }
     }
-
+    best_model <- svm(reformulate(variables, target_name), 
+                      data = outer_train_data, kernel = best_kernel, cost = best_cost, 
+                      probability = TRUE)
     predictions <- predict(best_model, outer_test_data, probability = TRUE)
     prob <- attr(predictions, "probabilities")[, 2]
-    pred_class <- ifelse(prob > 0.5, 1, 0)  # Asignar clases basadas en umbral
+    pred_class <- ifelse(prob > threshold, 1, 0)  # Asignar clases basadas en umbral
+    confusion <- table(outer_test_data[[target_name]], pred_class)
+    
+    if (nrow(confusion) < 2 || ncol(confusion) < 2) {
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+    } else {
+      TP <- confusion[2, 2]
+      TN <- confusion[1, 1]
+      FP <- confusion[1, 2]
+      FN <- confusion[2, 1]
+    }
+    auc <- pROC::roc(outer_test_data[[target_name]], prob)$auc
+
+    # Crear un vector con los nombres correctos y convertir a dataframe
+    metrics <- setNames(c(outer_index, TP, TN, FP, FN, auc, best_kernel, best_cost), names(performance_metrics))
+    performance_metrics <- rbind(performance_metrics, as.data.frame(t(metrics)))
+  }
+  
+  return(performance_metrics)
+}
+# Ejemplo de uso
+performance_svm <- double_cross_validation_svm(data = data_factor, 
+                                               outer = 5,
+                                               inner = 2,
+                                               target_name = "PCR",
+                                               kernels = c("sigmoid", "poly", "linear"),
+                                               costs = c(5, 20, 50, 100, 200, 500),
+                                               variables = colnames(data_factor)[!colnames(data_factor) %in% "PCR"], seed=90, threshold=.35)
+
+performance_svm
+```
+```{r}
+double_cross_validation_svm <- function(data, target_name, outer, inner, kernels, costs, variables, threshold, seed) {
+  set.seed(seed)
+  performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
+                                    FP = integer(), FN = integer(), AUC = numeric(),
+                                    Best_Kernel = character(), Best_Cost = numeric(), stringsAsFactors = FALSE)
+
+  data[[target_name]] <- as.factor(data[[target_name]])
+  outer_folds <- createFolds(data[[target_name]], k = outer, list = TRUE, returnTrain = FALSE)
+  
+  for (outer_index in seq_along(outer_folds)) {
+    outer_train_data <- data[-outer_folds[[outer_index]], ]
+    outer_test_data <- data[outer_folds[[outer_index]], ]
+
+    cat(sprintf("Outer Fold %d\n", outer_index))
+    cat("Training Data - Class 0: ", sum(outer_train_data[[target_name]] == "0"), "\n")
+    cat("Training Data - Class 1: ", sum(outer_train_data[[target_name]] == "1"), "\n")
+    cat("Testing Data - Class 0: ", sum(outer_test_data[[target_name]] == "0"), "\n")
+    cat("Testing Data - Class 1: ", sum(outer_test_data[[target_name]] == "1"), "\n")
+    
+    if (sum(outer_train_data[[target_name]] == "0") == 0 || sum(outer_train_data[[target_name]] == "1") == 0) {
+      cat("Skipping outer fold due to lack of class diversity\n")
+      next
+    }
+
+    inner_folds <- createFolds(outer_train_data[[target_name]], k = inner, list = TRUE, returnTrain = FALSE)
+    best_model <- NULL
+    best_auc <- 0
+    best_kernel <- NULL
+    best_cost <- NULL
+
+    grid <- expand.grid(kernel = kernels, cost = costs)
+
+    for (params in 1:nrow(grid)) {
+      inner_auc <- numeric()
+
+      for (inner_index in seq_along(inner_folds)) {
+        inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
+        inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
+
+        if (sum(inner_train_data[[target_name]] == "0") == 0 || sum(inner_train_data[[target_name]] == "1") == 0) {
+          cat("Skipping inner fold due to lack of class diversity\n")
+          next
+        }
+
+        result <- tryCatch({
+          model <- svm(reformulate(variables, target_name), 
+                       data = inner_train_data, kernel = grid$kernel[params], cost = grid$cost[params], 
+                       probability = TRUE)
+
+          pred <- predict(model, inner_test_data, probability = TRUE)
+          prob <- attr(pred, "probabilities")[, 2]
+          roc_curve <- pROC::roc(inner_test_data[[target_name]], prob)
+          inner_auc[inner_index] <- roc_curve$auc
+        }, error = function(e) {
+          cat("Error with parameters: kernel =", grid$kernel[params], ", cost =", grid$cost[params], "\n")
+          cat("Error message: ", e$message, "\n")
+          inner_auc[inner_index] <- 0
+        })
+      }
+
+      if (mean(inner_auc, na.rm = TRUE) > best_auc) {
+        best_auc <- mean(inner_auc, na.rm = TRUE)
+        best_model <- model
+        best_kernel <- grid$kernel[params]
+        best_cost <- grid$cost[params]
+      }
+    }
+    
+    predictions <- predict(best_model, outer_test_data, probability = TRUE)
+    prob <- attr(predictions, "probabilities")[, 2]
+    pred_class <- ifelse(prob > threshold, 1, 0)  # Asignar clases basadas en umbral
     confusion <- table(outer_test_data[[target_name]], pred_class)
     
     if (nrow(confusion) < 2 || ncol(confusion) < 2) {
@@ -911,16 +1017,17 @@ double_cross_validation_svm <- function(data, target_name, outer, inner, kernels
   return(performance_metrics)
 }
 
-# Ejemplo de uso
-performance_svm <- double_cross_validation_svm(data = data_numeric, 
+performance_svm <- double_cross_validation_svm(data = data_factor, 
                                                outer = 5,
                                                inner = 2,
                                                target_name = "PCR",
                                                kernels = c("sigmoid", "poly", "linear"),
-                                               costs = c(5, 20, 50, 100, 200, 500))
-
+                                               costs = c(5, 20, 50, 100, 200, 500),
+                                               variables = colnames(data_factor)[!colnames(data_factor) %in% "PCR"], seed=90, threshold=.35)
 performance_svm
 ```
+
+
 ## SVM CON METODO WRAPPED
 
 ```{r}
