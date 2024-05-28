@@ -71,6 +71,49 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="AlgoritmosApendizajeCancerMama_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
 <link href="AlgoritmosApendizajeCancerMama_files/libs/bootstrap/bootstrap-dark.min.css" rel="prefetch" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
 
+  <script>window.backupDefine = window.define; window.define = undefined;</script><script src="https://cdn.jsdelivr.net/npm/katex@0.15.1/dist/katex.min.js"></script>
+  <script>document.addEventListener("DOMContentLoaded", function () {
+ var mathElements = document.getElementsByClassName("math");
+ var macros = [];
+ for (var i = 0; i < mathElements.length; i++) {
+  var texText = mathElements[i].firstChild;
+  if (mathElements[i].tagName == "SPAN") {
+   katex.render(texText.data, mathElements[i], {
+    displayMode: mathElements[i].classList.contains('display'),
+    throwOnError: false,
+    macros: macros,
+    fleqn: false
+   });
+}}});
+  </script>
+  <script>window.define = window.backupDefine; window.backupDefine = undefined;</script><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.1/dist/katex.min.css">
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN") {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
 
 </head>
 
@@ -128,7 +171,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#wrapped-stepauc-3" id="toc-wrapped-stepauc-3" class="nav-link" data-scroll-target="#wrapped-stepauc-3"><span class="header-section-number">3.4.3</span> Wrapped (StepAUC)</a></li>
   <li><a href="#embedded-lasso-3" id="toc-embedded-lasso-3" class="nav-link" data-scroll-target="#embedded-lasso-3"><span class="header-section-number">3.4.4</span> Embedded (Lasso)</a></li>
   </ul></li>
-  <li><a href="#support-vector-machines-1" id="toc-support-vector-machines-1" class="nav-link" data-scroll-target="#support-vector-machines-1"><span class="header-section-number">3.5</span> Support Vector Machines</a>
+  <li><a href="#support-vector-machines" id="toc-support-vector-machines" class="nav-link" data-scroll-target="#support-vector-machines"><span class="header-section-number">3.5</span> Support Vector Machines</a>
   <ul class="collapse">
   <li><a href="#todas-las-variables-4" id="toc-todas-las-variables-4" class="nav-link" data-scroll-target="#todas-las-variables-4"><span class="header-section-number">3.5.1</span> Todas las Variables</a></li>
   <li><a href="#filtrado-asociación-4" id="toc-filtrado-asociación-4" class="nav-link" data-scroll-target="#filtrado-asociación-4"><span class="header-section-number">3.5.2</span> Filtrado (Asociación)</a></li>
@@ -278,23 +321,72 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="modelos-aplicados" class="level3" data-number="2.2.4">
 <h3 data-number="2.2.4" class="anchored" data-anchor-id="modelos-aplicados"><span class="header-section-number">2.2.4</span> Modelos Aplicados</h3>
+<p>Con el objetivo de conseguir un modelo ajustado para la predicción efectiva del estado PCR de un paciente en mente, se han seleccionado una serie de algoritmos de Aprendizaje Máquina (<em>Machine Learning</em>, ML) con varios parámetros de customización. Estos modelos se eligen por su capacidad de manejar diferentes tipos de datos y su rendimiento en tareas de clasificación, proporcionando así una evaluación completa y robusta para el problema en cuestión.</p>
 <section id="naive-bayes" class="level4" data-number="2.2.4.1">
 <h4 data-number="2.2.4.1" class="anchored" data-anchor-id="naive-bayes"><span class="header-section-number">2.2.4.1</span> Naive Bayes</h4>
+<p>Naive Bayes es un clasificador probabilístico basado en el teorema de Bayes, asumiendo una independencia condicional entre las características dadas la clase. En este estudio, se ha utilizado la implementación proporcionada en el paquete <code>e1071</code>. Formalmente, el clasificador Naive Bayes asigna una clase <span class="math inline">C_k</span> a una instancia <span class="math inline">x = (x_1, x_2, \ldots, x_n)</span> maximizando la probabilidad posterior <span class="math inline">P(C_k|x)</span>, que se calcula como:</p>
+<p><span class="math display"> P(C_k|x) = \frac{P(C_k) \cdot P(x|C_k)}{P(x)}</span></p>
+<p>Dado que <span class="math inline">P(x)</span> es constante para todas las clases, se simplifica a:</p>
+<p><span class="math display"> P(C_k|x) \propto P(C_k) \prod_{i=1}^{n} P(x_i|C_k) </span></p>
+<p>En resumen, el clasificador Naive Bayes es una opción eficiente y efectiva para problemas de clasificación, sin embargo, al <strong>asumir la independencia de las probabilidades condicionales</strong>, puede no dar resultados muy buenos, sin embargo, proporcionará una base sólida para predicciones iniciales, así como una base para la comparación entre modelos.</p>
 </section>
 <section id="adaboost" class="level4" data-number="2.2.4.2">
 <h4 data-number="2.2.4.2" class="anchored" data-anchor-id="adaboost"><span class="header-section-number">2.2.4.2</span> Adaboost</h4>
+<p>Adaboost, o Adaptive Boosting, es un algoritmo de aprendizaje automático que combina múltiples clasificadores débiles para crear un clasificador fuerte. En este estudio, se ha utilizado el paquete <code>mboost</code> de R con la configuración <code>family=Binomial()</code>, adaptado para tareas de clasificación binaria. Adaboost trabaja iterativamente, ajustando los pesos de las muestras de entrenamiento para concentrarse en aquellas que fueron clasificadas incorrectamente en iteraciones anteriores.</p>
+<p>De esta forma, Adaboost asigna pesos a cada muestra y ajusta un clasificador débil <span class="math inline">h_t(x)</span> en cada iteración <span class="math inline">t</span>. La salida final del clasificador se obtiene mediante una combinación ponderada de estos clasificadores débiles:</p>
+<p><span class="math display"> H(x) = \text{sign}\left( \sum_{t=1}^{T} \alpha_t h_t(x) \right) </span></p>
+<p>donde <span class="math inline">\alpha_t</span> es el peso asignado al clasificador <span class="math inline">h_t(x)</span> basado en su precisión. En cada iteración, el peso de las muestras mal clasificadas se incrementa, enfocando así el entrenamiento subsecuente en estas muestras.</p>
+<p>El principal hiperparámetro ajustado en este estudio ha sido el número de iteraciones <span class="math inline">T</span>. Este parámetro determina cuántos clasificadores débiles se combinarán para formar el clasificador final. Aumentar el número de iteraciones puede mejorar la capacidad del modelo para corregir errores y, por ende, afinar la frontera de decisión, pero también aumenta el riesgo de sobreajuste si el modelo se vuelve demasiado complejo.</p>
 </section>
 <section id="random-forest" class="level4" data-number="2.2.4.3">
 <h4 data-number="2.2.4.3" class="anchored" data-anchor-id="random-forest"><span class="header-section-number">2.2.4.3</span> Random Forest</h4>
+<p>Random Forest opera creando una colección de árboles de decisión, cada uno entrenado con un subconjunto aleatorio del conjunto de datos y un subconjunto aleatorio de características. Este enfoque introduce dos tipos de aleatoriedad: aleatoriedad en las muestras y aleatoriedad en las características, lo que ayuda a reducir la varianza del modelo y mitigar el sobreajuste. En el contexto de este estudio, se ha hecho uso del paquete <code>rpart</code> de R.</p>
+<p>Los principales hiperparámetros ajustados en este estudio han sido <code>cp_values</code> y <code>minsplit_values</code>.</p>
+<ul>
+<li><p><strong><code>cp_values</code> (complexity parameter)</strong>: Este parámetro controla la poda de los árboles de decisión individuales. Un valor más alto de <code>cp</code> conduce a una mayor poda, reduciendo la complejidad del árbol y ayudando a prevenir el sobreajuste. Ajustar este parámetro afecta la profundidad de los árboles individuales y, por ende, la precisión del modelo. Una selección óptima de <code>cp_values</code> es crucial para equilibrar el sesgo y la varianza del modelo.</p></li>
+<li><p><strong><code>minsplit_values</code></strong>: Este parámetro define el número mínimo de observaciones que debe tener un nodo para ser considerado para una división. Valores más altos de <code>minsplit</code> resultan en árboles más pequeños y menos complejos, mientras que valores más bajos permiten la creación de árboles más detallados. Ajustar <code>minsplit_values</code> permite controlar la granularidad con la que el modelo puede capturar las relaciones en los datos. Un valor adecuado de <code>minsplit</code> asegura que el modelo sea lo suficientemente flexible para capturar patrones relevantes sin sobreajustarse a ruido específico del conjunto de entrenamiento.</p></li>
+</ul>
 </section>
 <section id="k-nearest-neighbours" class="level4" data-number="2.2.4.4">
 <h4 data-number="2.2.4.4" class="anchored" data-anchor-id="k-nearest-neighbours"><span class="header-section-number">2.2.4.4</span> K-Nearest Neighbours</h4>
+<p>K-Nearest Neighbours (KNN) clasifica una muestra basada en las clases de sus <span class="math inline">k</span> vecinos más cercanos en el espacio de características. En este estudio, se ha utilizado el paquete <code>class</code> de R para implementar KNN, ajustando los parámetros <span class="math inline">k</span> y <span class="math inline">l</span> para optimizar la precisión del modelo en la predicción del estado PCR de los pacientes.</p>
+<p>KNN clasifica una muestra <span class="math inline">x</span> basándose en la mayoría de las clases de sus <span class="math inline">k</span> vecinos más cercanos, identificados utilizando una métrica de distancia. La distancia entre las muestras se calcula comúnmente usando la distancia euclidiana, pero se puede generalizar utilizando la distancia de Minkowski, definida como:</p>
+<p><span class="math display"> d(x_i, x_j) = \left( \sum_{m=1}^{M} |x_{im} - x_{jm}|^l \right)^{1/l} </span></p>
+<p>donde <span class="math inline">l</span> es el parámetro de distancia de Minkowski. Cuando <span class="math inline">l = 2</span>, se corresponde con la distancia euclidiana, y cuando <span class="math inline">l = 1</span>, se convierte en la distancia de Manhattan.</p>
+<p>Los principales hiperparámetros ajustados en este estudio son:</p>
+<ul>
+<li><p><strong><span class="math inline">k</span> (número de vecinos más cercanos)</strong>: Este parámetro define el número de vecinos que se considerarán para determinar la clase de una nueva muestra. Valores pequeños de <span class="math inline">k</span> hacen que el modelo sea más sensible al ruido en los datos, mientras que valores grandes pueden hacer que el modelo sea demasiado general y pierda precisión en detalles locales.</p></li>
+<li><p><strong><span class="math inline">l</span> (parámetro de distancia de Minkowski)</strong>: Este parámetro ajusta la métrica de distancia utilizada para identificar los vecinos más cercanos. Aunque el valor predeterminado es <span class="math inline">l = 2</span> (distancia euclidiana), ajustar <span class="math inline">l</span> permite al modelo adaptarse mejor a la geometría del espacio de características. Por ejemplo, un <span class="math inline">l</span> menor puede capturar mejor las relaciones lineales, mientras que un <span class="math inline">l</span> mayor puede ser más adecuado para relaciones más complejas y no lineales.</p></li>
+</ul>
+<p>Además, el parámetro <code>probes = TRUE</code> se utiliza para devolver las probabilidades de las clases predichas, proporcionando una medida de confianza en las predicciones del modelo.</p>
+<p>En resumen, KNN es un algoritmo intuitivo y efectivo para la clasificación, especialmente adecuado para conjuntos de datos donde la estructura local de las muestras es crucial para la precisión de las predicciones. Ajustar los parámetros <span class="math inline">k</span> y <span class="math inline">l</span> permite optimizar el modelo para capturar las relaciones subyacentes en los datos, asegurando predicciones precisas y confiables del estado PCR de los pacientes.</p>
 </section>
-<section id="support-vector-machines" class="level4" data-number="2.2.4.5">
-<h4 data-number="2.2.4.5" class="anchored" data-anchor-id="support-vector-machines"><span class="header-section-number">2.2.4.5</span> Support Vector Machines</h4>
+<section id="support-vector-machine" class="level4" data-number="2.2.4.5">
+<h4 data-number="2.2.4.5" class="anchored" data-anchor-id="support-vector-machine"><span class="header-section-number">2.2.4.5</span> Support Vector Machine</h4>
+<p>La Máquina de Vectores de Soporte, o, Support Vector Machine (SVM) es una técnica de clasificación que busca encontrar el hiperplano que mejor separa las clases en el espacio de características. En este estudio, se ha utilizado el paquete <code>e1071</code> de R para implementar SVM, ajustando los parámetros del kernel y el coste (C) para optimizar la precisión del modelo en la predicción del estado PCR de los pacientes.</p>
+<p>SVM funciona proyectando los datos a un espacio de mayor dimensión donde se puede encontrar un hiperplano que maximiza el margen de separación entre las clases. El hiperplano se define por:</p>
+<p><span class="math display"> \mathbf{w} \cdot \mathbf{x} + b = 0 </span></p>
+<p>donde <span class="math inline">\mathbf{w}</span> es el vector de pesos y <span class="math inline">b</span> es el sesgo. El objetivo es encontrar <span class="math inline">\mathbf{w}</span> y <span class="math inline">b</span> que maximicen el margen, sujetando a las restricciones de clasificación correcta de las muestras. Formalmente, los principales hiperparámetros ajustados en este estudio han sido:</p>
+<ul>
+<li><p><strong>Kernel</strong>: Este parámetro define la función de transformación que se utiliza para proyectar los datos en un espacio de mayor dimensión. Los kernels disponibles incluyen:</p>
+<ul>
+<li><strong>Lineal</strong>: $ K(, ) = $</li>
+<li><strong>Sigmoid</strong>: $ K(, ) = ( + r) $</li>
+<li><strong>Polinomial</strong>: $ K(, ) = ( + r)^d $</li>
+<li><strong>RBF (Radial Basis Function)</strong>: $ K(, ) = (-|| - ||^2) $</li>
+</ul>
+<p>La elección del kernel afecta directamente la capacidad del SVM para capturar relaciones no lineales en los datos. Por ejemplo, un kernel lineal es adecuado para datos linealmente separables, mientras que un kernel RBF es más flexible y puede modelar relaciones complejas.</p></li>
+<li><p><strong>Coste (C)</strong>: Este parámetro controla el margen de tolerancia a errores en la clasificación. Un valor alto de <span class="math inline">C</span> da como resultado un margen más estrecho y menos tolerancia a errores de clasificación, lo que puede llevar a un modelo que sobreajuste los datos de entrenamiento. Por otro lado, un valor bajo de <span class="math inline">C</span> permite un margen más amplio y más errores de clasificación, lo que puede resultar en un modelo más general.</p></li>
+</ul>
 </section>
 <section id="artificial-neural-networks" class="level4" data-number="2.2.4.6">
 <h4 data-number="2.2.4.6" class="anchored" data-anchor-id="artificial-neural-networks"><span class="header-section-number">2.2.4.6</span> Artificial Neural Networks</h4>
+<p>Las Redes Neuronales Artificiales (ANN) son modelos de aprendizaje automático inspirados en la estructura y funcionamiento del cerebro humano. En este estudio, se ha utilizado la función <code>nnet</code> del paquete <code>nnet</code> de R para implementar un modelo de red neuronal artificial, optimizando los parámetros <code>size</code> y <code>decay</code> para mejorar la precisión en la predicción del estado PCR de los pacientes.</p>
+<p>Las redes neuronales consisten en una capa de entrada, una o más capas ocultas, y una capa de salida. Cada neurona en estas capas realiza una operación lineal seguida de una función de activación no lineal. En este estudio, la arquitectura del modelo se definirá principalmente por el número de neuronas en la capa oculta (<code>size</code>) y el método de regularización (<code>weight-decay</code>).</p>
+<ul>
+<li><p><strong>Tamaño de la Capa Oculta (<code>size</code>)</strong>: Este parámetro especifica el número de neuronas en la capa oculta de la red neuronal. Un mayor número de neuronas (<code>size</code>) puede capturar patrones más complejos en los datos, pero también aumenta el riesgo de sobreajuste si el modelo se vuelve demasiado complejo.</p></li>
+<li><p><strong>Parámetro de Regularización (<code>decay</code>)</strong>: El parámetro <code>weight-decay</code> controla la magnitud de la penalización aplicada a los pesos del modelo durante el entrenamiento para prevenir el sobreajuste. Este método de regularización agrega un término a la función de pérdida que penaliza grandes valores de los pesos, manteniendo los pesos más pequeños y el modelo más sencillo. Ajustar el <code>decay</code> afecta la capacidad del modelo para generalizar, ya que valores muy altos pueden resultar en un modelo subajustado, mientras que valores muy bajos pueden no ser suficientes para evitar el sobreajuste.</p></li>
+</ul>
 </section>
 </section>
 </section>
@@ -361,8 +453,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 data-number="3.4.4" class="anchored" data-anchor-id="embedded-lasso-3"><span class="header-section-number">3.4.4</span> Embedded (Lasso)</h3>
 </section>
 </section>
-<section id="support-vector-machines-1" class="level2" data-number="3.5">
-<h2 data-number="3.5" class="anchored" data-anchor-id="support-vector-machines-1"><span class="header-section-number">3.5</span> Support Vector Machines</h2>
+<section id="support-vector-machines" class="level2" data-number="3.5">
+<h2 data-number="3.5" class="anchored" data-anchor-id="support-vector-machines"><span class="header-section-number">3.5</span> Support Vector Machines</h2>
 <section id="todas-las-variables-4" class="level3" data-number="3.5.1">
 <h3 data-number="3.5.1" class="anchored" data-anchor-id="todas-las-variables-4"><span class="header-section-number">3.5.1</span> Todas las Variables</h3>
 </section>
@@ -1170,113 +1262,189 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb1-149"><a href="#cb1-149" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-150"><a href="#cb1-150" aria-hidden="true" tabindex="-1"></a><span class="fu">### Modelos Aplicados</span></span>
 <span id="cb1-151"><a href="#cb1-151" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-152"><a href="#cb1-152" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Naive Bayes</span></span>
+<span id="cb1-152"><a href="#cb1-152" aria-hidden="true" tabindex="-1"></a>Con el objetivo de conseguir un modelo ajustado para la predicción efectiva del estado PCR de un paciente en mente, se han seleccionado una serie de algoritmos de Aprendizaje Máquina (*Machine Learning*, ML) con varios parámetros de customización. Estos modelos se eligen por su capacidad de manejar diferentes tipos de datos y su rendimiento en tareas de clasificación, proporcionando así una evaluación completa y robusta para el problema en cuestión.</span>
 <span id="cb1-153"><a href="#cb1-153" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-154"><a href="#cb1-154" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Adaboost</span></span>
+<span id="cb1-154"><a href="#cb1-154" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Naive Bayes</span></span>
 <span id="cb1-155"><a href="#cb1-155" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-156"><a href="#cb1-156" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Random Forest </span></span>
+<span id="cb1-156"><a href="#cb1-156" aria-hidden="true" tabindex="-1"></a>Naive Bayes es un clasificador probabilístico basado en el teorema de Bayes, asumiendo una independencia condicional entre las características dadas la clase. En este estudio, se ha utilizado la implementación proporcionada en el paquete <span class="in">`e1071`</span>. Formalmente, el clasificador Naive Bayes asigna una clase $C_k$ a una instancia $x = (x_1, x_2, \ldots, x_n)$ maximizando la probabilidad posterior $P(C_k|x)$, que se calcula como:</span>
 <span id="cb1-157"><a href="#cb1-157" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-158"><a href="#cb1-158" aria-hidden="true" tabindex="-1"></a><span class="fu">#### K-Nearest Neighbours </span></span>
+<span id="cb1-158"><a href="#cb1-158" aria-hidden="true" tabindex="-1"></a>$$ P(C_k|x) = \frac{P(C_k) \cdot P(x|C_k)}{P(x)}$$</span>
 <span id="cb1-159"><a href="#cb1-159" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-160"><a href="#cb1-160" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Support Vector Machines</span></span>
+<span id="cb1-160"><a href="#cb1-160" aria-hidden="true" tabindex="-1"></a>Dado que $P(x)$ es constante para todas las clases, se simplifica a:</span>
 <span id="cb1-161"><a href="#cb1-161" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-162"><a href="#cb1-162" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Artificial Neural Networks</span></span>
+<span id="cb1-162"><a href="#cb1-162" aria-hidden="true" tabindex="-1"></a>$$ P(C_k|x) \propto P(C_k) \prod_{i=1}^{n} P(x_i|C_k) $$</span>
 <span id="cb1-163"><a href="#cb1-163" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-164"><a href="#cb1-164" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-164"><a href="#cb1-164" aria-hidden="true" tabindex="-1"></a>En resumen, el clasificador Naive Bayes es una opción eficiente y efectiva para problemas de clasificación, sin embargo, al **asumir la independencia de las probabilidades condicionales**, puede no dar resultados muy buenos, sin embargo, proporcionará una base sólida para predicciones iniciales, así como una base para la comparación entre modelos.</span>
 <span id="cb1-165"><a href="#cb1-165" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-166"><a href="#cb1-166" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-166"><a href="#cb1-166" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Adaboost</span></span>
 <span id="cb1-167"><a href="#cb1-167" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-168"><a href="#cb1-168" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-168"><a href="#cb1-168" aria-hidden="true" tabindex="-1"></a>Adaboost, o Adaptive Boosting, es un algoritmo de aprendizaje automático que combina múltiples clasificadores débiles para crear un clasificador fuerte. En este estudio, se ha utilizado el paquete <span class="in">`mboost`</span> de R con la configuración <span class="in">`family=Binomial()`</span>, adaptado para tareas de clasificación binaria. Adaboost trabaja iterativamente, ajustando los pesos de las muestras de entrenamiento para concentrarse en aquellas que fueron clasificadas incorrectamente en iteraciones anteriores.</span>
 <span id="cb1-169"><a href="#cb1-169" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-170"><a href="#cb1-170" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-171"><a href="#cb1-171" aria-hidden="true" tabindex="-1"></a><span class="fu"># Resultados: Modelos y Técnicas Aplicadas</span></span>
-<span id="cb1-172"><a href="#cb1-172" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-173"><a href="#cb1-173" aria-hidden="true" tabindex="-1"></a><span class="fu">## Naive Bayes</span></span>
-<span id="cb1-174"><a href="#cb1-174" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-175"><a href="#cb1-175" aria-hidden="true" tabindex="-1"></a><span class="fu">### Todas las Variables</span></span>
-<span id="cb1-176"><a href="#cb1-176" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-177"><a href="#cb1-177" aria-hidden="true" tabindex="-1"></a><span class="fu">### Filtrado (Asociación)</span></span>
-<span id="cb1-178"><a href="#cb1-178" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-179"><a href="#cb1-179" aria-hidden="true" tabindex="-1"></a><span class="fu">### Wrapped (StepAUC)</span></span>
-<span id="cb1-180"><a href="#cb1-180" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-181"><a href="#cb1-181" aria-hidden="true" tabindex="-1"></a><span class="fu">### Embedded (Lasso)</span></span>
-<span id="cb1-182"><a href="#cb1-182" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-183"><a href="#cb1-183" aria-hidden="true" tabindex="-1"></a><span class="fu">## Adaboost</span></span>
-<span id="cb1-184"><a href="#cb1-184" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-185"><a href="#cb1-185" aria-hidden="true" tabindex="-1"></a><span class="fu">### Todas las Variables</span></span>
-<span id="cb1-186"><a href="#cb1-186" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-187"><a href="#cb1-187" aria-hidden="true" tabindex="-1"></a><span class="fu">### Filtrado (Asociación)</span></span>
-<span id="cb1-188"><a href="#cb1-188" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-189"><a href="#cb1-189" aria-hidden="true" tabindex="-1"></a><span class="fu">### Wrapped (StepAUC)</span></span>
-<span id="cb1-190"><a href="#cb1-190" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-191"><a href="#cb1-191" aria-hidden="true" tabindex="-1"></a><span class="fu">### Embedded (Lasso)</span></span>
-<span id="cb1-192"><a href="#cb1-192" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-193"><a href="#cb1-193" aria-hidden="true" tabindex="-1"></a><span class="fu">## Random Forest </span></span>
-<span id="cb1-194"><a href="#cb1-194" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-195"><a href="#cb1-195" aria-hidden="true" tabindex="-1"></a><span class="fu">### Todas las Variables</span></span>
-<span id="cb1-196"><a href="#cb1-196" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-197"><a href="#cb1-197" aria-hidden="true" tabindex="-1"></a><span class="fu">### Filtrado (Asociación)</span></span>
-<span id="cb1-198"><a href="#cb1-198" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-199"><a href="#cb1-199" aria-hidden="true" tabindex="-1"></a><span class="fu">### Wrapped (StepAUC)</span></span>
-<span id="cb1-200"><a href="#cb1-200" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-201"><a href="#cb1-201" aria-hidden="true" tabindex="-1"></a><span class="fu">### Embedded (Lasso)</span></span>
-<span id="cb1-202"><a href="#cb1-202" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-203"><a href="#cb1-203" aria-hidden="true" tabindex="-1"></a><span class="fu">## K-Nearest Neighbours </span></span>
-<span id="cb1-204"><a href="#cb1-204" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-205"><a href="#cb1-205" aria-hidden="true" tabindex="-1"></a><span class="fu">### Todas las Variables</span></span>
-<span id="cb1-206"><a href="#cb1-206" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-207"><a href="#cb1-207" aria-hidden="true" tabindex="-1"></a><span class="fu">### Filtrado (Asociación)</span></span>
+<span id="cb1-170"><a href="#cb1-170" aria-hidden="true" tabindex="-1"></a>De esta forma, Adaboost asigna pesos a cada muestra y ajusta un clasificador débil $h_t(x)$ en cada iteración $t$. La salida final del clasificador se obtiene mediante una combinación ponderada de estos clasificadores débiles:</span>
+<span id="cb1-171"><a href="#cb1-171" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-172"><a href="#cb1-172" aria-hidden="true" tabindex="-1"></a>$$ H(x) = \text{sign}\left( \sum_{t=1}^{T} \alpha_t h_t(x) \right) $$</span>
+<span id="cb1-173"><a href="#cb1-173" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-174"><a href="#cb1-174" aria-hidden="true" tabindex="-1"></a>donde $\alpha_t$ es el peso asignado al clasificador $h_t(x)$ basado en su precisión. En cada iteración, el peso de las muestras mal clasificadas se incrementa, enfocando así el entrenamiento subsecuente en estas muestras.</span>
+<span id="cb1-175"><a href="#cb1-175" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-176"><a href="#cb1-176" aria-hidden="true" tabindex="-1"></a>El principal hiperparámetro ajustado en este estudio ha sido el número de iteraciones $T$. Este parámetro determina cuántos clasificadores débiles se combinarán para formar el clasificador final. Aumentar el número de iteraciones puede mejorar la capacidad del modelo para corregir errores y, por ende, afinar la frontera de decisión, pero también aumenta el riesgo de sobreajuste si el modelo se vuelve demasiado complejo.</span>
+<span id="cb1-177"><a href="#cb1-177" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-178"><a href="#cb1-178" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Random Forest </span></span>
+<span id="cb1-179"><a href="#cb1-179" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-180"><a href="#cb1-180" aria-hidden="true" tabindex="-1"></a>Random Forest opera creando una colección de árboles de decisión, cada uno entrenado con un subconjunto aleatorio del conjunto de datos y un subconjunto aleatorio de características. Este enfoque introduce dos tipos de aleatoriedad: aleatoriedad en las muestras y aleatoriedad en las características, lo que ayuda a reducir la varianza del modelo y mitigar el sobreajuste. En el contexto de este estudio, se ha hecho uso del paquete <span class="in">`rpart`</span> de R.</span>
+<span id="cb1-181"><a href="#cb1-181" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-182"><a href="#cb1-182" aria-hidden="true" tabindex="-1"></a>Los principales hiperparámetros ajustados en este estudio han sido <span class="in">`cp_values`</span> y <span class="in">`minsplit_values`</span>. </span>
+<span id="cb1-183"><a href="#cb1-183" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-184"><a href="#cb1-184" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**`cp_values` (complexity parameter)**: Este parámetro controla la poda de los árboles de decisión individuales. Un valor más alto de <span class="in">`cp`</span> conduce a una mayor poda, reduciendo la complejidad del árbol y ayudando a prevenir el sobreajuste. Ajustar este parámetro afecta la profundidad de los árboles individuales y, por ende, la precisión del modelo. Una selección óptima de <span class="in">`cp_values`</span> es crucial para equilibrar el sesgo y la varianza del modelo.</span>
+<span id="cb1-185"><a href="#cb1-185" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-186"><a href="#cb1-186" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**`minsplit_values`**: Este parámetro define el número mínimo de observaciones que debe tener un nodo para ser considerado para una división. Valores más altos de <span class="in">`minsplit`</span> resultan en árboles más pequeños y menos complejos, mientras que valores más bajos permiten la creación de árboles más detallados. Ajustar <span class="in">`minsplit_values`</span> permite controlar la granularidad con la que el modelo puede capturar las relaciones en los datos. Un valor adecuado de <span class="in">`minsplit`</span> asegura que el modelo sea lo suficientemente flexible para capturar patrones relevantes sin sobreajustarse a ruido específico del conjunto de entrenamiento.</span>
+<span id="cb1-187"><a href="#cb1-187" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-188"><a href="#cb1-188" aria-hidden="true" tabindex="-1"></a><span class="fu">#### K-Nearest Neighbours</span></span>
+<span id="cb1-189"><a href="#cb1-189" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-190"><a href="#cb1-190" aria-hidden="true" tabindex="-1"></a>K-Nearest Neighbours (KNN) clasifica una muestra basada en las clases de sus $k$ vecinos más cercanos en el espacio de características. En este estudio, se ha utilizado el paquete <span class="in">`class`</span> de R para implementar KNN, ajustando los parámetros $k$ y $l$ para optimizar la precisión del modelo en la predicción del estado PCR de los pacientes.</span>
+<span id="cb1-191"><a href="#cb1-191" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-192"><a href="#cb1-192" aria-hidden="true" tabindex="-1"></a>KNN clasifica una muestra $x$ basándose en la mayoría de las clases de sus $k$ vecinos más cercanos, identificados utilizando una métrica de distancia. La distancia entre las muestras se calcula comúnmente usando la distancia euclidiana, pero se puede generalizar utilizando la distancia de Minkowski, definida como:</span>
+<span id="cb1-193"><a href="#cb1-193" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-194"><a href="#cb1-194" aria-hidden="true" tabindex="-1"></a>$$ d(x_i, x_j) = \left( \sum_{m=1}^{M} |x_{im} - x_{jm}|^l \right)^{1/l} $$</span>
+<span id="cb1-195"><a href="#cb1-195" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-196"><a href="#cb1-196" aria-hidden="true" tabindex="-1"></a>donde $l$ es el parámetro de distancia de Minkowski. Cuando $l = 2$, se corresponde con la distancia euclidiana, y cuando $l = 1$, se convierte en la distancia de Manhattan.</span>
+<span id="cb1-197"><a href="#cb1-197" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-198"><a href="#cb1-198" aria-hidden="true" tabindex="-1"></a>Los principales hiperparámetros ajustados en este estudio son:</span>
+<span id="cb1-199"><a href="#cb1-199" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-200"><a href="#cb1-200" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**$k$ (número de vecinos más cercanos)**: Este parámetro define el número de vecinos que se considerarán para determinar la clase de una nueva muestra. Valores pequeños de $k$ hacen que el modelo sea más sensible al ruido en los datos, mientras que valores grandes pueden hacer que el modelo sea demasiado general y pierda precisión en detalles locales. </span>
+<span id="cb1-201"><a href="#cb1-201" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-202"><a href="#cb1-202" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**$l$ (parámetro de distancia de Minkowski)**: Este parámetro ajusta la métrica de distancia utilizada para identificar los vecinos más cercanos. Aunque el valor predeterminado es $l = 2$ (distancia euclidiana), ajustar $l$ permite al modelo adaptarse mejor a la geometría del espacio de características. Por ejemplo, un $l$ menor puede capturar mejor las relaciones lineales, mientras que un $l$ mayor puede ser más adecuado para relaciones más complejas y no lineales.</span>
+<span id="cb1-203"><a href="#cb1-203" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-204"><a href="#cb1-204" aria-hidden="true" tabindex="-1"></a>Además, el parámetro <span class="in">`probes = TRUE`</span> se utiliza para devolver las probabilidades de las clases predichas, proporcionando una medida de confianza en las predicciones del modelo.</span>
+<span id="cb1-205"><a href="#cb1-205" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-206"><a href="#cb1-206" aria-hidden="true" tabindex="-1"></a>En resumen, KNN es un algoritmo intuitivo y efectivo para la clasificación, especialmente adecuado para conjuntos de datos donde la estructura local de las muestras es crucial para la precisión de las predicciones. Ajustar los parámetros $k$ y $l$ permite optimizar el modelo para capturar las relaciones subyacentes en los datos, asegurando predicciones precisas y confiables del estado PCR de los pacientes. </span>
+<span id="cb1-207"><a href="#cb1-207" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-208"><a href="#cb1-208" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-209"><a href="#cb1-209" aria-hidden="true" tabindex="-1"></a><span class="fu">### Wrapped (StepAUC)</span></span>
+<span id="cb1-209"><a href="#cb1-209" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Support Vector Machine</span></span>
 <span id="cb1-210"><a href="#cb1-210" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-211"><a href="#cb1-211" aria-hidden="true" tabindex="-1"></a><span class="fu">### Embedded (Lasso)</span></span>
+<span id="cb1-211"><a href="#cb1-211" aria-hidden="true" tabindex="-1"></a>La Máquina de Vectores de Soporte, o, Support Vector Machine (SVM) es una técnica de clasificación que busca encontrar el hiperplano que mejor separa las clases en el espacio de características. En este estudio, se ha utilizado el paquete <span class="in">`e1071`</span> de R para implementar SVM, ajustando los parámetros del kernel y el coste (C) para optimizar la precisión del modelo en la predicción del estado PCR de los pacientes.</span>
 <span id="cb1-212"><a href="#cb1-212" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-213"><a href="#cb1-213" aria-hidden="true" tabindex="-1"></a><span class="fu">## Support Vector Machines</span></span>
+<span id="cb1-213"><a href="#cb1-213" aria-hidden="true" tabindex="-1"></a>SVM funciona proyectando los datos a un espacio de mayor dimensión donde se puede encontrar un hiperplano que maximiza el margen de separación entre las clases. El hiperplano se define por:</span>
 <span id="cb1-214"><a href="#cb1-214" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-215"><a href="#cb1-215" aria-hidden="true" tabindex="-1"></a><span class="fu">### Todas las Variables</span></span>
+<span id="cb1-215"><a href="#cb1-215" aria-hidden="true" tabindex="-1"></a>$$ \mathbf{w} \cdot \mathbf{x} + b = 0 $$</span>
 <span id="cb1-216"><a href="#cb1-216" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-217"><a href="#cb1-217" aria-hidden="true" tabindex="-1"></a><span class="fu">### Filtrado (Asociación)</span></span>
+<span id="cb1-217"><a href="#cb1-217" aria-hidden="true" tabindex="-1"></a>donde $\mathbf{w}$ es el vector de pesos y $b$ es el sesgo. El objetivo es encontrar $\mathbf{w}$ y $b$ que maximicen el margen, sujetando a las restricciones de clasificación correcta de las muestras. Formalmente, los principales hiperparámetros ajustados en este estudio han sido:</span>
 <span id="cb1-218"><a href="#cb1-218" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-219"><a href="#cb1-219" aria-hidden="true" tabindex="-1"></a><span class="fu">### Wrapped (StepAUC)</span></span>
+<span id="cb1-219"><a href="#cb1-219" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Kernel**: Este parámetro define la función de transformación que se utiliza para proyectar los datos en un espacio de mayor dimensión. Los kernels disponibles incluyen:</span>
 <span id="cb1-220"><a href="#cb1-220" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-221"><a href="#cb1-221" aria-hidden="true" tabindex="-1"></a><span class="fu">### Embedded (Lasso)</span></span>
-<span id="cb1-222"><a href="#cb1-222" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-223"><a href="#cb1-223" aria-hidden="true" tabindex="-1"></a><span class="fu">## Artificial Neural Networks</span></span>
-<span id="cb1-224"><a href="#cb1-224" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-225"><a href="#cb1-225" aria-hidden="true" tabindex="-1"></a><span class="fu">### Todas las Variables</span></span>
-<span id="cb1-226"><a href="#cb1-226" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-227"><a href="#cb1-227" aria-hidden="true" tabindex="-1"></a><span class="fu">### Filtrado (Asociación)</span></span>
-<span id="cb1-228"><a href="#cb1-228" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-229"><a href="#cb1-229" aria-hidden="true" tabindex="-1"></a><span class="fu">### Wrapped (StepAUC)</span></span>
+<span id="cb1-221"><a href="#cb1-221" aria-hidden="true" tabindex="-1"></a><span class="ss">  - </span>**Lineal**: $ K(\mathbf{x_i}, \mathbf{x_j}) = \mathbf{x_i} \cdot \mathbf{x_j} $</span>
+<span id="cb1-222"><a href="#cb1-222" aria-hidden="true" tabindex="-1"></a><span class="ss">  - </span>**Sigmoid**: $ K(\mathbf{x_i}, \mathbf{x_j}) = \tanh(\alpha \mathbf{x_i} \cdot \mathbf{x_j} + r) $</span>
+<span id="cb1-223"><a href="#cb1-223" aria-hidden="true" tabindex="-1"></a><span class="ss">  - </span>**Polinomial**: $ K(\mathbf{x_i}, \mathbf{x_j}) = (\alpha \mathbf{x_i} \cdot \mathbf{x_j} + r)^d $</span>
+<span id="cb1-224"><a href="#cb1-224" aria-hidden="true" tabindex="-1"></a><span class="ss">  - </span>**RBF (Radial Basis Function)**: $ K(\mathbf{x_i}, \mathbf{x_j}) = \exp(-\gamma ||\mathbf{x_i} - \mathbf{x_j}||^2) $</span>
+<span id="cb1-225"><a href="#cb1-225" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-226"><a href="#cb1-226" aria-hidden="true" tabindex="-1"></a>  La elección del kernel afecta directamente la capacidad del SVM para capturar relaciones no lineales en los datos. Por ejemplo, un kernel lineal es adecuado para datos linealmente separables, mientras que un kernel RBF es más flexible y puede modelar relaciones complejas.</span>
+<span id="cb1-227"><a href="#cb1-227" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-228"><a href="#cb1-228" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Coste (C)**: Este parámetro controla el margen de tolerancia a errores en la clasificación. Un valor alto de $C$ da como resultado un margen más estrecho y menos tolerancia a errores de clasificación, lo que puede llevar a un modelo que sobreajuste los datos de entrenamiento. Por otro lado, un valor bajo de $C$ permite un margen más amplio y más errores de clasificación, lo que puede resultar en un modelo más general. </span>
+<span id="cb1-229"><a href="#cb1-229" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-230"><a href="#cb1-230" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-231"><a href="#cb1-231" aria-hidden="true" tabindex="-1"></a><span class="fu">### Embedded (Lasso)</span></span>
+<span id="cb1-231"><a href="#cb1-231" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Artificial Neural Networks</span></span>
 <span id="cb1-232"><a href="#cb1-232" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-233"><a href="#cb1-233" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-233"><a href="#cb1-233" aria-hidden="true" tabindex="-1"></a>Las Redes Neuronales Artificiales (ANN) son modelos de aprendizaje automático inspirados en la estructura y funcionamiento del cerebro humano. En este estudio, se ha utilizado la función <span class="in">`nnet`</span> del paquete <span class="in">`nnet`</span> de R para implementar un modelo de red neuronal artificial, optimizando los parámetros <span class="in">`size`</span> y <span class="in">`decay`</span> para mejorar la precisión en la predicción del estado PCR de los pacientes.</span>
 <span id="cb1-234"><a href="#cb1-234" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-235"><a href="#cb1-235" aria-hidden="true" tabindex="-1"></a><span class="fu"># Discusión: Estudio de los Resultados</span></span>
+<span id="cb1-235"><a href="#cb1-235" aria-hidden="true" tabindex="-1"></a>Las redes neuronales consisten en una capa de entrada, una o más capas ocultas, y una capa de salida. Cada neurona en estas capas realiza una operación lineal seguida de una función de activación no lineal. En este estudio, la arquitectura del modelo se definirá principalmente por el número de neuronas en la capa oculta (<span class="in">`size`</span>) y el método de regularización (<span class="in">`weight-decay`</span>).</span>
 <span id="cb1-236"><a href="#cb1-236" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-237"><a href="#cb1-237" aria-hidden="true" tabindex="-1"></a><span class="fu">## Estabilidad entre Folds</span></span>
+<span id="cb1-237"><a href="#cb1-237" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Tamaño de la Capa Oculta (`size`)**: Este parámetro especifica el número de neuronas en la capa oculta de la red neuronal. Un mayor número de neuronas (<span class="in">`size`</span>) puede capturar patrones más complejos en los datos, pero también aumenta el riesgo de sobreajuste si el modelo se vuelve demasiado complejo. </span>
 <span id="cb1-238"><a href="#cb1-238" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-239"><a href="#cb1-239" aria-hidden="true" tabindex="-1"></a><span class="fu">## Estabilidad para Hiperparámetros</span></span>
+<span id="cb1-239"><a href="#cb1-239" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Parámetro de Regularización (`decay`)**: El parámetro <span class="in">`weight-decay`</span> controla la magnitud de la penalización aplicada a los pesos del modelo durante el entrenamiento para prevenir el sobreajuste. Este método de regularización agrega un término a la función de pérdida que penaliza grandes valores de los pesos, manteniendo los pesos más pequeños y el modelo más sencillo. Ajustar el <span class="in">`decay`</span> afecta la capacidad del modelo para generalizar, ya que valores muy altos pueden resultar en un modelo subajustado, mientras que valores muy bajos pueden no ser suficientes para evitar el sobreajuste.</span>
 <span id="cb1-240"><a href="#cb1-240" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-241"><a href="#cb1-241" aria-hidden="true" tabindex="-1"></a><span class="fu">## Estabilidad de Variables</span></span>
+<span id="cb1-241"><a href="#cb1-241" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-242"><a href="#cb1-242" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-243"><a href="#cb1-243" aria-hidden="true" tabindex="-1"></a><span class="fu">## "Mejor" Modelo</span></span>
+<span id="cb1-243"><a href="#cb1-243" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-244"><a href="#cb1-244" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-245"><a href="#cb1-245" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-246"><a href="#cb1-246" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-247"><a href="#cb1-247" aria-hidden="true" tabindex="-1"></a><span class="fu"># Conclusión</span></span>
+<span id="cb1-247"><a href="#cb1-247" aria-hidden="true" tabindex="-1"></a><span class="fu"># Resultados: Modelos y Técnicas Aplicadas</span></span>
 <span id="cb1-248"><a href="#cb1-248" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-249"><a href="#cb1-249" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-249"><a href="#cb1-249" aria-hidden="true" tabindex="-1"></a><span class="fu">## Naive Bayes</span></span>
 <span id="cb1-250"><a href="#cb1-250" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-251"><a href="#cb1-251" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-251"><a href="#cb1-251" aria-hidden="true" tabindex="-1"></a><span class="fu">### Todas las Variables</span></span>
 <span id="cb1-252"><a href="#cb1-252" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-253"><a href="#cb1-253" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-253"><a href="#cb1-253" aria-hidden="true" tabindex="-1"></a><span class="fu">### Filtrado (Asociación)</span></span>
 <span id="cb1-254"><a href="#cb1-254" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-255"><a href="#cb1-255" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-255"><a href="#cb1-255" aria-hidden="true" tabindex="-1"></a><span class="fu">### Wrapped (StepAUC)</span></span>
 <span id="cb1-256"><a href="#cb1-256" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-257"><a href="#cb1-257" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-258"><a href="#cb1-258" aria-hidden="true" tabindex="-1"></a></span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb1-257"><a href="#cb1-257" aria-hidden="true" tabindex="-1"></a><span class="fu">### Embedded (Lasso)</span></span>
+<span id="cb1-258"><a href="#cb1-258" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-259"><a href="#cb1-259" aria-hidden="true" tabindex="-1"></a><span class="fu">## Adaboost</span></span>
+<span id="cb1-260"><a href="#cb1-260" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-261"><a href="#cb1-261" aria-hidden="true" tabindex="-1"></a><span class="fu">### Todas las Variables</span></span>
+<span id="cb1-262"><a href="#cb1-262" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-263"><a href="#cb1-263" aria-hidden="true" tabindex="-1"></a><span class="fu">### Filtrado (Asociación)</span></span>
+<span id="cb1-264"><a href="#cb1-264" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-265"><a href="#cb1-265" aria-hidden="true" tabindex="-1"></a><span class="fu">### Wrapped (StepAUC)</span></span>
+<span id="cb1-266"><a href="#cb1-266" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-267"><a href="#cb1-267" aria-hidden="true" tabindex="-1"></a><span class="fu">### Embedded (Lasso)</span></span>
+<span id="cb1-268"><a href="#cb1-268" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-269"><a href="#cb1-269" aria-hidden="true" tabindex="-1"></a><span class="fu">## Random Forest </span></span>
+<span id="cb1-270"><a href="#cb1-270" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-271"><a href="#cb1-271" aria-hidden="true" tabindex="-1"></a><span class="fu">### Todas las Variables</span></span>
+<span id="cb1-272"><a href="#cb1-272" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-273"><a href="#cb1-273" aria-hidden="true" tabindex="-1"></a><span class="fu">### Filtrado (Asociación)</span></span>
+<span id="cb1-274"><a href="#cb1-274" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-275"><a href="#cb1-275" aria-hidden="true" tabindex="-1"></a><span class="fu">### Wrapped (StepAUC)</span></span>
+<span id="cb1-276"><a href="#cb1-276" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-277"><a href="#cb1-277" aria-hidden="true" tabindex="-1"></a><span class="fu">### Embedded (Lasso)</span></span>
+<span id="cb1-278"><a href="#cb1-278" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-279"><a href="#cb1-279" aria-hidden="true" tabindex="-1"></a><span class="fu">## K-Nearest Neighbours </span></span>
+<span id="cb1-280"><a href="#cb1-280" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-281"><a href="#cb1-281" aria-hidden="true" tabindex="-1"></a><span class="fu">### Todas las Variables</span></span>
+<span id="cb1-282"><a href="#cb1-282" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-283"><a href="#cb1-283" aria-hidden="true" tabindex="-1"></a><span class="fu">### Filtrado (Asociación)</span></span>
+<span id="cb1-284"><a href="#cb1-284" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-285"><a href="#cb1-285" aria-hidden="true" tabindex="-1"></a><span class="fu">### Wrapped (StepAUC)</span></span>
+<span id="cb1-286"><a href="#cb1-286" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-287"><a href="#cb1-287" aria-hidden="true" tabindex="-1"></a><span class="fu">### Embedded (Lasso)</span></span>
+<span id="cb1-288"><a href="#cb1-288" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-289"><a href="#cb1-289" aria-hidden="true" tabindex="-1"></a><span class="fu">## Support Vector Machines</span></span>
+<span id="cb1-290"><a href="#cb1-290" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-291"><a href="#cb1-291" aria-hidden="true" tabindex="-1"></a><span class="fu">### Todas las Variables</span></span>
+<span id="cb1-292"><a href="#cb1-292" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-293"><a href="#cb1-293" aria-hidden="true" tabindex="-1"></a><span class="fu">### Filtrado (Asociación)</span></span>
+<span id="cb1-294"><a href="#cb1-294" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-295"><a href="#cb1-295" aria-hidden="true" tabindex="-1"></a><span class="fu">### Wrapped (StepAUC)</span></span>
+<span id="cb1-296"><a href="#cb1-296" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-297"><a href="#cb1-297" aria-hidden="true" tabindex="-1"></a><span class="fu">### Embedded (Lasso)</span></span>
+<span id="cb1-298"><a href="#cb1-298" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-299"><a href="#cb1-299" aria-hidden="true" tabindex="-1"></a><span class="fu">## Artificial Neural Networks</span></span>
+<span id="cb1-300"><a href="#cb1-300" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-301"><a href="#cb1-301" aria-hidden="true" tabindex="-1"></a><span class="fu">### Todas las Variables</span></span>
+<span id="cb1-302"><a href="#cb1-302" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-303"><a href="#cb1-303" aria-hidden="true" tabindex="-1"></a><span class="fu">### Filtrado (Asociación)</span></span>
+<span id="cb1-304"><a href="#cb1-304" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-305"><a href="#cb1-305" aria-hidden="true" tabindex="-1"></a><span class="fu">### Wrapped (StepAUC)</span></span>
+<span id="cb1-306"><a href="#cb1-306" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-307"><a href="#cb1-307" aria-hidden="true" tabindex="-1"></a><span class="fu">### Embedded (Lasso)</span></span>
+<span id="cb1-308"><a href="#cb1-308" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-309"><a href="#cb1-309" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-310"><a href="#cb1-310" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-311"><a href="#cb1-311" aria-hidden="true" tabindex="-1"></a><span class="fu"># Discusión: Estudio de los Resultados</span></span>
+<span id="cb1-312"><a href="#cb1-312" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-313"><a href="#cb1-313" aria-hidden="true" tabindex="-1"></a><span class="fu">## Estabilidad entre Folds</span></span>
+<span id="cb1-314"><a href="#cb1-314" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-315"><a href="#cb1-315" aria-hidden="true" tabindex="-1"></a><span class="fu">## Estabilidad para Hiperparámetros</span></span>
+<span id="cb1-316"><a href="#cb1-316" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-317"><a href="#cb1-317" aria-hidden="true" tabindex="-1"></a><span class="fu">## Estabilidad de Variables</span></span>
+<span id="cb1-318"><a href="#cb1-318" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-319"><a href="#cb1-319" aria-hidden="true" tabindex="-1"></a><span class="fu">## "Mejor" Modelo</span></span>
+<span id="cb1-320"><a href="#cb1-320" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-321"><a href="#cb1-321" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-322"><a href="#cb1-322" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-323"><a href="#cb1-323" aria-hidden="true" tabindex="-1"></a><span class="fu"># Conclusión</span></span>
+<span id="cb1-324"><a href="#cb1-324" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-325"><a href="#cb1-325" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-326"><a href="#cb1-326" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-327"><a href="#cb1-327" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-328"><a href="#cb1-328" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-329"><a href="#cb1-329" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-330"><a href="#cb1-330" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-331"><a href="#cb1-331" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-332"><a href="#cb1-332" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-333"><a href="#cb1-333" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-334"><a href="#cb1-334" aria-hidden="true" tabindex="-1"></a></span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div></div></div></div></div>
 </div> <!-- /content -->
 

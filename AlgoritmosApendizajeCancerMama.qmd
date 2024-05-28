@@ -149,18 +149,94 @@ En este estudio, se han realizado cuatro esquemas de selección de característi
 
 ### Modelos Aplicados
 
+Con el objetivo de conseguir un modelo ajustado para la predicción efectiva del estado PCR de un paciente en mente, se han seleccionado una serie de algoritmos de Aprendizaje Máquina (*Machine Learning*, ML) con varios parámetros de customización. Estos modelos se eligen por su capacidad de manejar diferentes tipos de datos y su rendimiento en tareas de clasificación, proporcionando así una evaluación completa y robusta para el problema en cuestión.
+
 #### Naive Bayes
+
+Naive Bayes es un clasificador probabilístico basado en el teorema de Bayes, asumiendo una independencia condicional entre las características dadas la clase. En este estudio, se ha utilizado la implementación proporcionada en el paquete `e1071`. Formalmente, el clasificador Naive Bayes asigna una clase $C_k$ a una instancia $x = (x_1, x_2, \ldots, x_n)$ maximizando la probabilidad posterior $P(C_k|x)$, que se calcula como:
+
+$$ P(C_k|x) = \frac{P(C_k) \cdot P(x|C_k)}{P(x)}$$
+
+Dado que $P(x)$ es constante para todas las clases, se simplifica a:
+
+$$ P(C_k|x) \propto P(C_k) \prod_{i=1}^{n} P(x_i|C_k) $$
+
+En resumen, el clasificador Naive Bayes es una opción eficiente y efectiva para problemas de clasificación, sin embargo, al **asumir la independencia de las probabilidades condicionales**, puede no dar resultados muy buenos, sin embargo, proporcionará una base sólida para predicciones iniciales, así como una base para la comparación entre modelos.
 
 #### Adaboost
 
+Adaboost, o Adaptive Boosting, es un algoritmo de aprendizaje automático que combina múltiples clasificadores débiles para crear un clasificador fuerte. En este estudio, se ha utilizado el paquete `mboost` de R con la configuración `family=Binomial()`, adaptado para tareas de clasificación binaria. Adaboost trabaja iterativamente, ajustando los pesos de las muestras de entrenamiento para concentrarse en aquellas que fueron clasificadas incorrectamente en iteraciones anteriores.
+
+De esta forma, Adaboost asigna pesos a cada muestra y ajusta un clasificador débil $h_t(x)$ en cada iteración $t$. La salida final del clasificador se obtiene mediante una combinación ponderada de estos clasificadores débiles:
+
+$$ H(x) = \text{sign}\left( \sum_{t=1}^{T} \alpha_t h_t(x) \right) $$
+
+donde $\alpha_t$ es el peso asignado al clasificador $h_t(x)$ basado en su precisión. En cada iteración, el peso de las muestras mal clasificadas se incrementa, enfocando así el entrenamiento subsecuente en estas muestras.
+
+El principal hiperparámetro ajustado en este estudio ha sido el número de iteraciones $T$. Este parámetro determina cuántos clasificadores débiles se combinarán para formar el clasificador final. Aumentar el número de iteraciones puede mejorar la capacidad del modelo para corregir errores y, por ende, afinar la frontera de decisión, pero también aumenta el riesgo de sobreajuste si el modelo se vuelve demasiado complejo.
+
 #### Random Forest 
 
-#### K-Nearest Neighbours 
+Random Forest opera creando una colección de árboles de decisión, cada uno entrenado con un subconjunto aleatorio del conjunto de datos y un subconjunto aleatorio de características. Este enfoque introduce dos tipos de aleatoriedad: aleatoriedad en las muestras y aleatoriedad en las características, lo que ayuda a reducir la varianza del modelo y mitigar el sobreajuste. En el contexto de este estudio, se ha hecho uso del paquete `rpart` de R.
 
-#### Support Vector Machines
+Los principales hiperparámetros ajustados en este estudio han sido `cp_values` y `minsplit_values`. 
+
+- **`cp_values` (complexity parameter)**: Este parámetro controla la poda de los árboles de decisión individuales. Un valor más alto de `cp` conduce a una mayor poda, reduciendo la complejidad del árbol y ayudando a prevenir el sobreajuste. Ajustar este parámetro afecta la profundidad de los árboles individuales y, por ende, la precisión del modelo. Una selección óptima de `cp_values` es crucial para equilibrar el sesgo y la varianza del modelo.
+
+- **`minsplit_values`**: Este parámetro define el número mínimo de observaciones que debe tener un nodo para ser considerado para una división. Valores más altos de `minsplit` resultan en árboles más pequeños y menos complejos, mientras que valores más bajos permiten la creación de árboles más detallados. Ajustar `minsplit_values` permite controlar la granularidad con la que el modelo puede capturar las relaciones en los datos. Un valor adecuado de `minsplit` asegura que el modelo sea lo suficientemente flexible para capturar patrones relevantes sin sobreajustarse a ruido específico del conjunto de entrenamiento.
+
+#### K-Nearest Neighbours
+
+K-Nearest Neighbours (KNN) clasifica una muestra basada en las clases de sus $k$ vecinos más cercanos en el espacio de características. En este estudio, se ha utilizado el paquete `class` de R para implementar KNN, ajustando los parámetros $k$ y $l$ para optimizar la precisión del modelo en la predicción del estado PCR de los pacientes.
+
+KNN clasifica una muestra $x$ basándose en la mayoría de las clases de sus $k$ vecinos más cercanos, identificados utilizando una métrica de distancia. La distancia entre las muestras se calcula comúnmente usando la distancia euclidiana, pero se puede generalizar utilizando la distancia de Minkowski, definida como:
+
+$$ d(x_i, x_j) = \left( \sum_{m=1}^{M} |x_{im} - x_{jm}|^l \right)^{1/l} $$
+
+donde $l$ es el parámetro de distancia de Minkowski. Cuando $l = 2$, se corresponde con la distancia euclidiana, y cuando $l = 1$, se convierte en la distancia de Manhattan.
+
+Los principales hiperparámetros ajustados en este estudio son:
+
+- **$k$ (número de vecinos más cercanos)**: Este parámetro define el número de vecinos que se considerarán para determinar la clase de una nueva muestra. Valores pequeños de $k$ hacen que el modelo sea más sensible al ruido en los datos, mientras que valores grandes pueden hacer que el modelo sea demasiado general y pierda precisión en detalles locales. 
+
+- **$l$ (parámetro de distancia de Minkowski)**: Este parámetro ajusta la métrica de distancia utilizada para identificar los vecinos más cercanos. Aunque el valor predeterminado es $l = 2$ (distancia euclidiana), ajustar $l$ permite al modelo adaptarse mejor a la geometría del espacio de características. Por ejemplo, un $l$ menor puede capturar mejor las relaciones lineales, mientras que un $l$ mayor puede ser más adecuado para relaciones más complejas y no lineales.
+
+Además, el parámetro `probes = TRUE` se utiliza para devolver las probabilidades de las clases predichas, proporcionando una medida de confianza en las predicciones del modelo.
+
+En resumen, KNN es un algoritmo intuitivo y efectivo para la clasificación, especialmente adecuado para conjuntos de datos donde la estructura local de las muestras es crucial para la precisión de las predicciones. Ajustar los parámetros $k$ y $l$ permite optimizar el modelo para capturar las relaciones subyacentes en los datos, asegurando predicciones precisas y confiables del estado PCR de los pacientes. 
+
+
+#### Support Vector Machine
+
+La Máquina de Vectores de Soporte, o, Support Vector Machine (SVM) es una técnica de clasificación que busca encontrar el hiperplano que mejor separa las clases en el espacio de características. En este estudio, se ha utilizado el paquete `e1071` de R para implementar SVM, ajustando los parámetros del kernel y el coste (C) para optimizar la precisión del modelo en la predicción del estado PCR de los pacientes.
+
+SVM funciona proyectando los datos a un espacio de mayor dimensión donde se puede encontrar un hiperplano que maximiza el margen de separación entre las clases. El hiperplano se define por:
+
+$$ \mathbf{w} \cdot \mathbf{x} + b = 0 $$
+
+donde $\mathbf{w}$ es el vector de pesos y $b$ es el sesgo. El objetivo es encontrar $\mathbf{w}$ y $b$ que maximicen el margen, sujetando a las restricciones de clasificación correcta de las muestras. Formalmente, los principales hiperparámetros ajustados en este estudio han sido:
+
+- **Kernel**: Este parámetro define la función de transformación que se utiliza para proyectar los datos en un espacio de mayor dimensión. Los kernels disponibles incluyen:
+
+  - **Lineal**: $ K(\mathbf{x_i}, \mathbf{x_j}) = \mathbf{x_i} \cdot \mathbf{x_j} $
+  - **Sigmoid**: $ K(\mathbf{x_i}, \mathbf{x_j}) = \tanh(\alpha \mathbf{x_i} \cdot \mathbf{x_j} + r) $
+  - **Polinomial**: $ K(\mathbf{x_i}, \mathbf{x_j}) = (\alpha \mathbf{x_i} \cdot \mathbf{x_j} + r)^d $
+  - **RBF (Radial Basis Function)**: $ K(\mathbf{x_i}, \mathbf{x_j}) = \exp(-\gamma ||\mathbf{x_i} - \mathbf{x_j}||^2) $
+
+  La elección del kernel afecta directamente la capacidad del SVM para capturar relaciones no lineales en los datos. Por ejemplo, un kernel lineal es adecuado para datos linealmente separables, mientras que un kernel RBF es más flexible y puede modelar relaciones complejas.
+
+- **Coste (C)**: Este parámetro controla el margen de tolerancia a errores en la clasificación. Un valor alto de $C$ da como resultado un margen más estrecho y menos tolerancia a errores de clasificación, lo que puede llevar a un modelo que sobreajuste los datos de entrenamiento. Por otro lado, un valor bajo de $C$ permite un margen más amplio y más errores de clasificación, lo que puede resultar en un modelo más general. 
+
 
 #### Artificial Neural Networks
 
+Las Redes Neuronales Artificiales (ANN) son modelos de aprendizaje automático inspirados en la estructura y funcionamiento del cerebro humano. En este estudio, se ha utilizado la función `nnet` del paquete `nnet` de R para implementar un modelo de red neuronal artificial, optimizando los parámetros `size` y `decay` para mejorar la precisión en la predicción del estado PCR de los pacientes.
+
+Las redes neuronales consisten en una capa de entrada, una o más capas ocultas, y una capa de salida. Cada neurona en estas capas realiza una operación lineal seguida de una función de activación no lineal. En este estudio, la arquitectura del modelo se definirá principalmente por el número de neuronas en la capa oculta (`size`) y el método de regularización (`weight-decay`).
+
+- **Tamaño de la Capa Oculta (`size`)**: Este parámetro especifica el número de neuronas en la capa oculta de la red neuronal. Un mayor número de neuronas (`size`) puede capturar patrones más complejos en los datos, pero también aumenta el riesgo de sobreajuste si el modelo se vuelve demasiado complejo. 
+
+- **Parámetro de Regularización (`decay`)**: El parámetro `weight-decay` controla la magnitud de la penalización aplicada a los pesos del modelo durante el entrenamiento para prevenir el sobreajuste. Este método de regularización agrega un término a la función de pérdida que penaliza grandes valores de los pesos, manteniendo los pesos más pequeños y el modelo más sencillo. Ajustar el `decay` afecta la capacidad del modelo para generalizar, ya que valores muy altos pueden resultar en un modelo subajustado, mientras que valores muy bajos pueden no ser suficientes para evitar el sobreajuste.
 
 
 
@@ -168,68 +244,3859 @@ En este estudio, se han realizado cuatro esquemas de selección de característi
 
 
 
-# Resultados: Modelos y Técnicas Aplicadas
+# Resultados
 
 ## Naive Bayes
 
+### Aparente
+
+```{r, eval=FALSE}
+evaluate_aparent_performance_model_naiveBayes <- function(data, target_var, model_func, vars = NULL, threshold, seed) {
+  if (is.null(vars)) {
+    vars <- setdiff(names(data), target_var)
+  }
+  set.seed(seed = seed)
+  data[[target_var]] <- factor(data[[target_var]], levels = c(0, 1))
+  formula <- as.formula(paste(target_var, "~", paste(vars, collapse = "+")))
+  
+  model <- model_func(formula, data)
+  predictions <- predict(model, newdata = data, type = "raw")[, 2]
+  
+  actual_classes <- data[[target_var]]
+  predicted_classes <- ifelse(predictions > threshold, 1, 0)
+  confusion_matrix <- table(predicted_classes, actual_classes)
+  
+  tp <- ifelse("1" %in% rownames(confusion_matrix) && "1" %in% colnames(confusion_matrix), confusion_matrix["1", "1"], 0)
+  tn <- ifelse("0" %in% rownames(confusion_matrix) && "0" %in% colnames(confusion_matrix), confusion_matrix["0", "0"], 0)
+  fp <- ifelse("1" %in% rownames(confusion_matrix) && "0" %in% colnames(confusion_matrix), confusion_matrix["1", "0"], 0)
+  fn <- ifelse("0" %in% rownames(confusion_matrix) && "1" %in% colnames(confusion_matrix), confusion_matrix["0", "1"], 0)
+  
+  accuracy <- (tp + tn) / (tp + tn + fp + fn)
+  precision <- ifelse(tp + fp > 0, tp / (tp + fp), 0)
+  recall <- ifelse(tp + fn > 0, tp / (tp + fn), 0)
+  f1_score <- ifelse(precision + recall > 0, 2 * (precision * recall) / (precision + recall), 0)
+  roc_obj <- pROC::roc(actual_classes, predictions)
+  
+  list(confusion_matrix = confusion_matrix, accuracy = accuracy, precision = precision, 
+       recall = recall, f1_score = f1_score, roc_curve = roc_obj)
+}
+naiveBayes_model <- function(formula, data) {
+  naiveBayes(formula = formula, data = data)
+}
+resultadosAparentesNaiveBayes <- evaluate_aparent_performance_model_naiveBayes(data = data_factor, 
+                                                                               target_var = "PCR",
+                                                                              model_func = naiveBayes_model,
+                                                                              vars = ".",
+                                                                              threshold = .35,
+                                                                              seed = 90)
+```
+
+```{r, message=FALSE, warning=FALSE}
+load("RData_Files_Algorithms/NaiveBayes_Aparente.RData")
+```
+
 ### Todas las Variables
+
+```{r, eval=FALSE}
+double_cross_validation_naiveBayes <- function(data, target_name, outer, inner, variables, threshold, seed) {
+  set.seed(seed)
+  performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
+                                    FP = integer(), FN = integer(), AUC = numeric(), stringsAsFactors = FALSE)
+  
+  data[[target_name]] <- as.factor(data[[target_name]])
+  outer_folds <- createFolds(data[[target_name]], k = outer, list = TRUE, returnTrain = FALSE)
+  
+  for (outer_index in seq_along(outer_folds)) {
+    outer_train_data <- data[-outer_folds[[outer_index]], ]
+    outer_test_data <- data[outer_folds[[outer_index]], ]
+    
+    cat(sprintf("Outer Fold %d\n", outer_index))
+    cat("Training Data - Class 0: ", sum(outer_train_data[[target_name]] == "0"), "\n")
+    cat("Training Data - Class 1: ", sum(outer_train_data[[target_name]] == "1"), "\n")
+    cat("Testing Data - Class 0: ", sum(outer_test_data[[target_name]] == "0"), "\n")
+    cat("Testing Data - Class 1: ", sum(outer_test_data[[target_name]] == "1"), "\n")
+    
+    if (sum(outer_train_data[[target_name]] == "0") == 0 || sum(outer_train_data[[target_name]] == "1") == 0) {
+      cat("Skipping outer fold due to lack of class diversity\n")
+      next
+    }
+    
+    inner_folds <- createFolds(outer_train_data[[target_name]], k = inner, list = TRUE, returnTrain = FALSE)
+    best_model <- NULL
+    best_auc <- 0
+
+    formula <- reformulate(variables, target_name)
+
+    for (inner_index in seq_along(inner_folds)) {
+      inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
+      inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
+
+      if (sum(inner_train_data[[target_name]] == "0") == 0 || sum(inner_train_data[[target_name]] == "1") == 0) {
+        cat("Skipping inner fold due to lack of class diversity\n")
+        next
+      }
+
+      inner_auc <- numeric()
+
+      result <- tryCatch({
+        model <- naiveBayes(formula, data = inner_train_data)
+        predictions <- predict(model, inner_test_data, type = "raw")[, 2]
+        roc_curve <- roc(inner_test_data[[target_name]], predictions)
+        inner_auc[inner_index] <- roc_curve$auc
+      }, error = function(e) {
+        cat("Error in inner fold ", inner_index, "\n")
+        cat("Error message: ", e$message, "\n")
+        inner_auc[inner_index] <- 0
+      })
+
+      if (mean(inner_auc, na.rm = TRUE) > best_auc) {
+        best_auc <- mean(inner_auc, na.rm = TRUE)
+        best_model <- model
+      }
+    }
+
+    if (is.null(best_model)) {
+      cat("No valid model found for outer fold ", outer_index, "\n")
+      next
+    }
+
+    predictions <- predict(best_model, outer_test_data, type = "raw")[, 2]
+    pred_class <- ifelse(predictions > threshold, "1", "0")
+    confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
+
+    if (nrow(confusion) < 2 || ncol(confusion) < 2) {
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+    } else {
+      TP <- confusion[2, 2]
+      TN <- confusion[1, 1]
+      FP <- confusion[1, 2]
+      FN <- confusion[2, 1]
+    }
+    auc <- roc(outer_test_data[[target_name]], predictions)$auc
+
+    metrics <- setNames(c(outer_index, TP, TN, FP, FN, auc), names(performance_metrics))
+    performance_metrics <- rbind(performance_metrics, as.data.frame(t(metrics)))
+  }
+
+  return(performance_metrics)
+}
+
+evaluate_with_seeds_NaiveBayes_Asociacion_Todas <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+}
+
+performance_naiveBayes_todasVariables <- evaluate_with_seeds_NaiveBayes_Asociacion_Todas(
+  evaluation_function = double_cross_validation_naiveBayes,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  vars = todas_variables_factor,
+  threshold = .35,
+  seeds = seeds)
+
+```
+
+```{r, message=FALSE, warning=FALSE}
+load("RData_Files_Algorithms/NaiveBayes_TodasVariables.RData")
+```
 
 ### Filtrado (Asociación)
 
+```{r, eval=FALSE}
+performance_naiveBayes_Asociacion <- evaluate_with_seeds_NaiveBayes_Asociacion_Todas(
+  evaluation_function = double_cross_validation_naiveBayes,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  vars = todas_variables_factor,
+  threshold = .35,
+  seeds = seeds)
+```
+
+```{r, message=FALSE, warning=FALSE}
+load("RData_Files_Algorithms/NaiveBayes_Asociacion.RData")
+```
+
 ### Wrapped (StepAUC)
 
+```{r, eval=FALSE}
+double_cross_validation_naiveBayes_stepAUC <- function(data, target_name, outer, inner, variables, threshold, seed) {
+  set.seed(seed)
+  performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
+                                    FP = integer(), FN = integer(), AUC = numeric(),
+                                    Best_Variables = character(), stringsAsFactors = FALSE)
+  
+  inner_fold_metrics <- data.frame(Fold = integer(), Inner_Fold = integer(), 
+                                   TP = integer(), TN = integer(), FP = integer(), 
+                                   FN = integer(), AUC = numeric(), stringsAsFactors = FALSE)
+  
+  data[[target_name]] <- as.factor(data[[target_name]])
+  outer_folds <- createFolds(data[[target_name]], k = outer, list = TRUE, returnTrain = FALSE)
+  
+  for (outer_index in seq_along(outer_folds)) {
+    outer_train_data <- data[-outer_folds[[outer_index]], ]
+    outer_test_data <- data[outer_folds[[outer_index]], ]
+    
+    cat(sprintf("Outer Fold %d\n", outer_index))
+    cat("Training Data - Class 0: ", sum(outer_train_data[[target_name]] == "0"), "\n")
+    cat("Training Data - Class 1: ", sum(outer_train_data[[target_name]] == "1"), "\n")
+    cat("Testing Data - Class 0: ", sum(outer_test_data[[target_name]] == "0"), "\n")
+    cat("Testing Data - Class 1: ", sum(outer_test_data[[target_name]] == "1"), "\n")
+    
+    inner_folds <- createFolds(outer_train_data[[target_name]], k = inner, list = TRUE, returnTrain = FALSE)
+    best_model <- NULL
+    best_auc <- 0
+    best_vars <- variables
+    
+    stepAUC <- function(vars, outer_train_data, target_name, inner_folds) {
+      current_vars <- vars
+      best_inner_auc <- 0
+      best_inner_model <- NULL
+      best_inner_vars <- current_vars
+      improved <- TRUE
+      
+      while (improved && length(current_vars) > 1) {
+        improved <- FALSE
+        best_auc_in_step <- best_inner_auc
+        
+        for (var in current_vars) {
+          temp_vars <- setdiff(current_vars, var)
+          inner_auc <- numeric()
+          
+          for (inner_index in seq_along(inner_folds)) {
+            inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
+            inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
+            
+            result <- tryCatch({
+              model <- naiveBayes(as.formula(paste(target_name, "~", paste(temp_vars, collapse = "+"))),
+                                  data = inner_train_data)
+              
+              predictions <- predict(model, newdata = inner_test_data, type = "raw")[, 2]
+              roc_curve <- roc(inner_test_data[[target_name]], predictions)
+              inner_auc[inner_index] <- roc_curve$auc
+              
+            }, error = function(e) {
+              cat("Error with variables:", paste(temp_vars, collapse = ", "), "\n")
+              inner_auc[inner_index] <- NA  # Set to NA or some other indicator of failure
+            })
+          }
+          
+          mean_inner_auc <- mean(inner_auc, na.rm = TRUE)
+          if (!is.na(mean_inner_auc) && mean_inner_auc > best_auc_in_step) {
+            best_auc_in_step <- mean_inner_auc
+            best_inner_model <- model
+            best_inner_vars <- temp_vars
+            improved <- TRUE
+          }
+        }
+        
+        if (improved) {
+          current_vars <- best_inner_vars
+          best_inner_auc <- best_auc_in_step
+          cat("Vars improved: ", paste(current_vars, collapse=", "), "\n")
+          cat("AUC: ", paste(best_inner_auc), "\n")
+        }
+      }
+      
+      list(model = best_inner_model, auc = best_inner_auc, vars = best_inner_vars)
+    }
+    
+    best_result <- stepAUC(variables, outer_train_data, target_name, inner_folds)
+    best_model <- best_result$model
+    best_auc <- best_result$auc
+    best_vars <- best_result$vars
+
+    if (is.null(best_model)) {
+      cat("Error: No valid model found for outer fold ", outer_index, "\n")
+      next
+    }
+
+    # Evaluar el mejor modelo en el validation split del inner loop
+    inner_auc_vals <- numeric()
+    for (inner_index in seq_along(inner_folds)) {
+      inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
+      inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
+      
+      predictions <- predict(best_model, newdata = inner_test_data, type = "raw")[, 2]
+      roc_curve <- roc(inner_test_data[[target_name]], predictions)
+      inner_auc_vals[inner_index] <- roc_curve$auc
+
+      pred_class <- ifelse(predictions > threshold, "1", "0")
+      confusion <- table(Actual = inner_test_data[[target_name]], Predicted = pred_class)
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+      auc <- roc_curve$auc
+      
+      inner_metrics <- setNames(c(outer_index, inner_index, TP, TN, FP, FN, auc), names(inner_fold_metrics))
+      inner_fold_metrics <- rbind(inner_fold_metrics, as.data.frame(t(inner_metrics)))
+    }
+    
+    best_inner_auc <- mean(inner_auc_vals, na.rm = TRUE)
+    
+    predictions <- predict(best_model, outer_test_data, type = "raw")[, 2]
+    pred_class <- ifelse(predictions > threshold, "1", "0")
+    confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
+    
+    if (nrow(confusion) < 2 || ncol(confusion) < 2) {
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+    } else {
+      TP <- confusion[2, 2]
+      TN <- confusion[1, 1]
+      FP <- confusion[1, 2]
+      FN <- confusion[2, 1]
+    }
+    auc <- roc(outer_test_data[[target_name]], predictions)$auc
+    
+    metrics <- setNames(c(outer_index, TP, TN, FP, FN, auc, 
+                          paste(best_vars, collapse = ",")), 
+                        names(performance_metrics))
+    performance_metrics <- rbind(performance_metrics, as.data.frame(t(metrics)))
+    
+    cat("Performance:", paste(performance_metrics))
+    cat(sprintf("Confusion Matrix for Fold %d:\n", outer_index))
+    print(confusion)
+    cat(sprintf("Metrics for Fold %d:\n", outer_index))
+    cat(sprintf("TP: %d, TN: %d, FP: %d, FN: %d, AUC: %f, Best Variables: %s\n",
+                TP, TN, FP, FN, auc, paste(best_vars, collapse = ",")))
+  }
+  
+  list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics)
+}
+
+evaluate_with_seeds_NaiveBayes_stepAUC <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+}
+
+performance_naiveBayes_stepAUC <- evaluate_with_seeds_NaiveBayes_stepAUC(
+  evaluation_function = double_cross_validation_naiveBayes_stepAUC,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  vars = todas_variables_factor,
+  target_var = "PCR",
+  threshold = .35,
+  seeds = seeds
+)
+```
+
+```{r, message=FALSE, warning=FALSE}
+load("RData_Files_Algorithms/NaiveBayes_StepAUC.RData")
+```
+
 ### Embedded (Lasso)
+
+```{r, eval=FALSE}
+double_cross_validation_naiveBayes_lasso <- function(data, target_name, outer, inner, variables, threshold, seed) {
+  set.seed(seed)
+  performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
+                                    FP = integer(), FN = integer(), AUC = numeric(),
+                                    Best_Variables = character(), stringsAsFactors = FALSE)
+  
+  inner_fold_metrics <- data.frame(Fold = integer(), Inner_Fold = integer(), 
+                                   TP = integer(), TN = integer(), FP = integer(), 
+                                   FN = integer(), AUC = numeric(), stringsAsFactors = FALSE)
+  
+  # Convertir las variables del dataset con model.matrix
+  target <- as.factor(data[[target_name]])  # Aseguramos que la variable de respuesta sea factor
+  features <- data[, setdiff(names(data), target_name)]
+  data_matrix <- as.data.frame(model.matrix(~ ., data=features)[,-1])  # Eliminar el intercepto
+  data_matrix[[target_name]] <- target
+  
+  outer_folds <- createFolds(data_matrix[[target_name]], k = outer)
+  
+  for (outer_index in seq_along(outer_folds)) {
+    outer_train_data <- data_matrix[-outer_folds[[outer_index]], ]
+    outer_test_data <- data_matrix[outer_folds[[outer_index]], ]
+    
+    cat(sprintf("Outer Fold %d\n", outer_index))
+    cat("Training Data - Class 0: ", sum(outer_train_data[[target_name]] == 0), "\n")
+    cat("Training Data - Class 1: ", sum(outer_train_data[[target_name]] == 1), "\n")
+    cat("Testing Data - Class 0: ", sum(outer_test_data[[target_name]] == 0), "\n")
+    cat("Testing Data - Class 1: ", sum(outer_test_data[[target_name]] == 1), "\n")
+    
+    inner_folds <- createFolds(outer_train_data[[target_name]], k = inner)
+    best_model <- NULL
+    best_auc <- 0
+    best_vars <- colnames(outer_train_data)[!colnames(outer_train_data) %in% target_name]
+    
+    select_vars_lasso <- function(data, target_name) {
+      target <- as.numeric(data[[target_name]]) - 1  # Convertimos a numérico para Lasso
+      features <- data[, setdiff(names(data), target_name)]
+      X <- model.matrix(~ ., data=features)[,-1]  # Eliminamos el intercepto
+      y <- target
+      
+      # Ajustamos el modelo Lasso
+      lasso_model <- cv.glmnet(X, y, alpha=1)
+      lasso_coef <- coef(lasso_model, s = "lambda.min")
+      
+      # Seleccionamos las variables no nulas
+      selected_vars <- rownames(lasso_coef)[lasso_coef[, 1] != 0]
+      selected_vars <- setdiff(selected_vars, "(Intercept)")
+      cat("Selected variables by Lasso: ", paste(selected_vars, collapse=", "), "\n")
+      return(selected_vars)
+    }
+    
+    stepAUC <- function(vars, data, target_name, inner_folds) {
+      best_inner_auc <- 0
+      best_inner_model <- NULL
+      best_inner_vars <- vars
+      improved <- TRUE
+      
+      while (improved && length(vars) > 1) {
+        improved <- FALSE
+        best_auc_in_step <- best_inner_auc
+        
+        auc_vals <- numeric()
+        
+        for (inner_index in seq_along(inner_folds)) {
+          inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
+          inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
+          
+          selected_vars <- select_vars_lasso(inner_train_data, target_name)
+          formula <- as.formula(paste(target_name, "~", paste(selected_vars, collapse = "+")))
+          cat("Testing with formula: ", deparse(formula), "\n")
+          
+          result <- tryCatch({
+            model <- naiveBayes(formula, data = inner_train_data)
+            
+            predictions <- predict(model, inner_test_data, type = "raw")[,2]
+            roc_curve <- roc(inner_test_data[[target_name]], predictions)
+            auc_vals[inner_index] <- roc_curve$auc
+            cat("AUC for inner fold ", inner_index, ": ", roc_curve$auc, "\n")
+            
+          }, error = function(e) {
+            cat("Error with variables: ", paste(selected_vars, collapse = ", "), "\n")
+            cat("Error message: ", e$message, "\n")
+            auc_vals[inner_index] <- NA  # Set to NA or some other indicator of failure
+          })
+        }
+        
+        mean_auc <- mean(auc_vals, na.rm = TRUE)
+        cat("Mean AUC: ", mean_auc, "\n")
+        if (!is.na(mean_auc) && mean_auc > best_auc_in_step) {
+          best_auc_in_step <- mean_auc
+          best_inner_model <- model
+          best_inner_vars <- selected_vars
+          improved <- TRUE
+        }
+        
+        if (improved) {
+          vars <- best_inner_vars
+          best_inner_auc <- best_auc_in_step
+          cat("Vars improved: ", paste(vars, collapse=", "), "\n")
+          cat("AUC: ", best_inner_auc, "\n")
+        }
+      }
+      
+      list(model = best_inner_model, auc = best_inner_auc, vars = best_inner_vars)
+    }
+    
+    best_result <- stepAUC(best_vars, outer_train_data, target_name, inner_folds)
+    best_model <- best_result$model
+    best_auc <- best_result$auc
+    best_vars <- best_result$vars
+    
+    if (is.null(best_model)) {
+      cat("Error: No valid model found for outer fold ", outer_index, "\n")
+      next
+    }
+
+    # Evaluar el mejor modelo en el validation split del inner loop
+    inner_auc_vals <- numeric()
+    for (inner_index in seq_along(inner_folds)) {
+      inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
+      inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
+      
+      predictions <- predict(best_model, inner_test_data, type = "raw")[,2]
+      roc_curve <- roc(inner_test_data[[target_name]], predictions)
+      inner_auc_vals[inner_index] <- roc_curve$auc
+      cat("Inner fold ", inner_index, " AUC: ", roc_curve$auc, "\n")
+
+      pred_class <- ifelse(predictions > threshold, 1, 0)
+      confusion <- table(Actual = inner_test_data[[target_name]], Predicted = pred_class)
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+      auc <- roc_curve$auc
+      
+      inner_metrics <- setNames(c(outer_index, inner_index, TP, TN, FP, FN, auc), names(inner_fold_metrics))
+      inner_fold_metrics <- rbind(inner_fold_metrics, as.data.frame(t(inner_metrics)))
+    }
+    
+    best_inner_auc <- mean(inner_auc_vals, na.rm = TRUE)
+    cat("Best inner AUC: ", best_inner_auc, "\n")
+    
+    predictions <- predict(best_model, outer_test_data, type = "raw")[,2]
+    pred_class <- ifelse(predictions > threshold, 1, 0)  # Asignar clases basadas en umbral
+    confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
+    
+    if (nrow(confusion) < 2 || ncol(confusion) < 2) {
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+    } else {
+      TP <- confusion[2, 2]
+      TN <- confusion[1, 1]
+      FP <- confusion[1, 2]
+      FN <- confusion[2, 1]
+    }
+    auc <- roc(outer_test_data[[target_name]], predictions)$auc
+    
+    metrics <- setNames(c(outer_index, TP, TN, FP, FN, auc, 
+                          paste(best_vars, collapse = ",")), 
+                        names(performance_metrics))
+    performance_metrics <- rbind(performance_metrics, as.data.frame(t(metrics)))
+    
+    cat("Performance:\n", paste(performance_metrics), "\n")
+    cat(sprintf("Confusion Matrix for Fold %d:\n", outer_index))
+    print(confusion)
+    cat(sprintf("Metrics for Fold %d:\n", outer_index))
+    cat(sprintf("TP: %d, TN: %d, FP: %d, FN: %d, AUC: %f, Best Variables: %s\n",
+                TP, TN, FP, FN, auc, paste(best_vars, collapse = ",")))
+  }
+  
+  list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics)
+}
+
+evaluate_with_seeds_NaiveBayes_Lasso <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+  }
+
+performance_naiveBayes_lasso <- evaluate_with_seeds_NaiveBayes_Lasso(
+  evaluation_function = double_cross_validation_naiveBayes_lasso,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  vars = todas_variables_factor,
+  target_var = "PCR",
+  threshold = .35,
+  seeds = seeds
+)
+```
+
+```{r, message=FALSE, warning=FALSE}
+load("RData_Files_Algorithms/NaiveBayes_Lasso.RData")
+```
 
 ## Adaboost
 
+### Aparente
+
+```{r, eval=FALSE}
+evaluate_aparent_performance_model_adaboost <- function(data, target_var, model_func, vars = NULL, iterations = 100, threshold) {
+  if (is.null(vars)) {
+    vars <- setdiff(names(data), target_var)
+  }
+  
+  data[[target_var]] <- factor(data[[target_var]], levels = c(0, 1))
+  formula <- as.formula(paste(target_var, "~", paste(vars, collapse = "+")))
+  
+  model <- model_func(formula, data, iterations)
+  predictions <- predict(model, newdata = data, type = "response")
+  
+  actual_classes <- data[[target_var]]
+  predicted_classes <- ifelse(predictions > threshold, 1, 0)
+  confusion_matrix <- table(Predicted = predicted_classes, Actual = actual_classes)
+  
+  tp <- ifelse("1" %in% rownames(confusion_matrix) && "1" %in% colnames(confusion_matrix), confusion_matrix["1", "1"], 0)
+  tn <- ifelse("0" %in% rownames(confusion_matrix) && "0" %in% colnames(confusion_matrix), confusion_matrix["0", "0"], 0)
+  fp <- ifelse("1" %in% rownames(confusion_matrix) && "0" %in% colnames(confusion_matrix), confusion_matrix["1", "0"], 0)
+  fn <- ifelse("0" %in% rownames(confusion_matrix) && "1" %in% colnames(confusion_matrix), confusion_matrix["0", "1"], 0)
+  
+  accuracy <- (tp + tn) / (tp + tn + fp + fn)
+  precision <- ifelse(tp + fp > 0, tp / (tp + fp), 0)
+  recall <- ifelse(tp + fn > 0, tp / (tp + fn), 0)
+  f1_score <- ifelse(precision + recall > 0, 2 * (precision * recall) / (precision + recall), 0)
+  roc_obj <- pROC::roc(actual_classes, predictions)
+  
+  list(confusion_matrix = confusion_matrix, accuracy = accuracy, precision = precision, 
+       recall = recall, f1_score = f1_score, roc_curve = roc_obj)
+}
+
+adaboost_model <- function(formula, data, iterations) {
+  model <- glmboost(formula, data = data, family = Binomial(), control = boost_control(mstop = iterations))
+  model
+}
+
+resultadosAparentesAdaBoost <- evaluate_aparent_performance_model_adaboost(data = data_numeric, target_var = "PCR",
+                                                                           model_func = adaboost_model,
+                                                                           vars = ".",
+                                                                           iterations = 100,
+                                                                           threshold = 0.35)
+```
+
+```{r, message=FALSE, warning=FALSE}
+load("RData_Files_Algorithms/AdaBoost_Aparente.RData")
+```
+
 ### Todas las Variables
+
+```{r, eval=FALSE}
+double_cross_validation_adaboost <- function(data, target_name, outer, inner, iterations, variables, threshold, seed) {
+  set.seed(seed)
+  performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
+                                    FP = integer(), FN = integer(), AUC = numeric(), 
+                                    Best_Iteration = integer(), stringsAsFactors = FALSE)
+  
+  data[[target_name]] <- as.factor(data[[target_name]])
+  outer_folds <- createFolds(data[[target_name]], k = outer, list = TRUE, returnTrain = FALSE)
+  
+  for (outer_index in seq_along(outer_folds)) {
+    outer_train_data <- data[-outer_folds[[outer_index]], ]
+    outer_test_data <- data[outer_folds[[outer_index]], ]
+    
+    cat(sprintf("Outer Fold %d\n", outer_index))
+    cat("Training Data - Class 0: ", sum(outer_train_data[[target_name]] == "0"), "\n")
+    cat("Training Data - Class 1: ", sum(outer_train_data[[target_name]] == "1"), "\n")
+    cat("Testing Data - Class 0: ", sum(outer_test_data[[target_name]] == "0"), "\n")
+    cat("Testing Data - Class 1: ", sum(outer_test_data[[target_name]] == "1"), "\n")
+    
+    if (sum(outer_train_data[[target_name]] == "0") == 0 || sum(outer_train_data[[target_name]] == "1") == 0) {
+      cat("Skipping outer fold due to lack of class diversity\n")
+      next
+    }
+    
+    inner_folds <- createFolds(outer_train_data[[target_name]], k = inner, list = TRUE, returnTrain = FALSE)
+    best_model <- NULL
+    best_auc <- 0
+    best_iteration <- NULL
+
+    grid <- expand.grid(iteration = iterations)
+    formula <- reformulate(variables, target_name)
+
+    for (params in 1:nrow(grid)) {
+      inner_auc <- numeric()
+
+      for (inner_index in seq_along(inner_folds)) {
+        inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
+        inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
+
+        if (sum(inner_train_data[[target_name]] == "0") == 0 || sum(inner_train_data[[target_name]] == "1") == 0) {
+          cat("Skipping inner fold due to lack of class diversity\n")
+          next
+        }
+
+        result <- tryCatch({
+          model <- blackboost(formula, data = inner_train_data, family = Binomial(), control = boost_control(mstop = grid$iteration[params]))
+          
+          predictions <- predict(model, inner_test_data, type = "response")
+          roc_curve <- roc(inner_test_data[[target_name]], predictions)
+          inner_auc[inner_index] <- roc_curve$auc
+        }, error = function(e) {
+          cat("Error with parameters: iteration =", grid$iteration[params], "\n")
+          cat("Error message: ", e$message, "\n")
+          inner_auc[inner_index] <- 0
+        })
+      }
+
+      if (mean(inner_auc, na.rm = TRUE) > best_auc) {
+        best_auc <- mean(inner_auc, na.rm = TRUE)
+        best_model <- model
+        best_iteration <- grid$iteration[params]
+      }
+    }
+
+    if (is.null(best_model)) {
+      cat("No valid model found for outer fold ", outer_index, "\n")
+      next
+    }
+
+    predictions <- predict(best_model, outer_test_data, type = "response")
+    pred_class <- ifelse(predictions > threshold, "1", "0")
+    confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
+
+    if (nrow(confusion) < 2 || ncol(confusion) < 2) {
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+    } else {
+      TP <- confusion[2, 2]
+      TN <- confusion[1, 1]
+      FP <- confusion[1, 2]
+      FN <- confusion[2, 1]
+    }
+    auc <- roc(outer_test_data[[target_name]], predictions)$auc
+
+    metrics <- setNames(c(outer_index, TP, TN, FP, FN, auc, best_iteration), names(performance_metrics))
+    performance_metrics <- rbind(performance_metrics, as.data.frame(t(metrics)))
+  }
+
+  return(performance_metrics)
+}
+
+evaluate_with_seeds_AdaBoost_Asociacion_Todas <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, iterations) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner,
+                                   iterations, 
+                                   seed = seed)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+}
+
+performance_adaboost_todasvariables <- evaluate_with_seeds_AdaBoost_Asociacion_Todas(
+  evaluation_function = double_cross_validation_adaboost,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  vars = todas_variables_factor,
+  threshold = .35,
+  seeds = seeds,
+  iterations = c(50, 100, 150, 200)
+)
+
+
+```
+
+```{r, message=FALSE, warning=FALSE}
+load("RData_Files_Algorithms/AdaBoost_TodasVariables.RData")
+```
 
 ### Filtrado (Asociación)
 
+```{r, eval=FALSE}
+performance_adaboost_Asociacion <- evaluate_with_seeds_AdaBoost_Asociacion_Todas(
+  evaluation_function = double_cross_validation_adaboost,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  vars = asociacion,
+  threshold = .35,
+  seeds = seeds,
+  iterations = c(50, 100, 150, 200)
+)
+```
+
+```{r, message=FALSE, warning=FALSE}
+load("RData_Files_Algorithms/AdaBoost_Asociacion.RData")
+```
+
 ### Wrapped (StepAUC)
 
+```{r, eval=FALSE}
+double_cross_validation_adaboost_stepAUC <- function(data, target_name, outer, inner, iterations, variables, threshold, seed) {
+  set.seed(seed)
+  performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
+                                    FP = integer(), FN = integer(), AUC = numeric(),
+                                    Best_Iterations = integer(), Best_Variables = character(), stringsAsFactors = FALSE)
+  
+  inner_fold_metrics <- data.frame(Fold = integer(), Inner_Fold = integer(), 
+                                   TP = integer(), TN = integer(), FP = integer(), 
+                                   FN = integer(), AUC = numeric(), stringsAsFactors = FALSE)
+  
+  data[[target_name]] <- as.factor(data[[target_name]])
+  outer_folds <- createFolds(data[[target_name]], k = outer, list = TRUE, returnTrain = FALSE)
+  
+  for (outer_index in seq_along(outer_folds)) {
+    outer_train_data <- data[-outer_folds[[outer_index]], ]
+    outer_test_data <- data[outer_folds[[outer_index]], ]
+    
+    cat(sprintf("Outer Fold %d\n", outer_index))
+    cat("Training Data - Class 0: ", sum(outer_train_data[[target_name]] == "0"), "\n")
+    cat("Training Data - Class 1: ", sum(outer_train_data[[target_name]] == "1"), "\n")
+    cat("Testing Data - Class 0: ", sum(outer_test_data[[target_name]] == "0"), "\n")
+    cat("Testing Data - Class 1: ", sum(outer_test_data[[target_name]] == "1"), "\n")
+    
+    inner_folds <- createFolds(outer_train_data[[target_name]], k = inner, list = TRUE, returnTrain = FALSE)
+    best_model <- NULL
+    best_auc <- 0
+    best_iterations <- NULL
+    best_vars <- variables
+    
+    stepAUC <- function(vars, outer_train_data, target_name, iterations, inner_folds) {
+      current_vars <- vars
+      best_inner_auc <- 0
+      best_inner_model <- NULL
+      best_inner_iterations <- NULL
+      best_inner_vars <- current_vars
+      improved <- TRUE
+      
+      while (improved && length(current_vars) > 1) {
+        improved <- FALSE
+        best_auc_in_step <- best_inner_auc
+        
+        for (var in current_vars) {
+          temp_vars <- setdiff(current_vars, var)
+          inner_auc <- numeric()
+          
+          for (iter in iterations) {
+            auc_vals <- numeric()
+            
+            for (inner_index in seq_along(inner_folds)) {
+              inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
+              inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
+              
+              result <- tryCatch({
+                model <- glmboost(as.formula(paste(target_name, "~", paste(temp_vars, collapse = "+"))),
+                                  data = inner_train_data, family = Binomial(),
+                                  control = boost_control(mstop = iter))
+                
+                predictions <- predict(model, newdata = inner_test_data, type = "response")
+                roc_curve <- roc(inner_test_data[[target_name]], predictions)
+                auc_vals[inner_index] <- roc_curve$auc
+                
+              }, error = function(e) {
+                cat("Error with variables:", paste(temp_vars, collapse = ", "), "\n")
+                auc_vals[inner_index] <- 0
+              })
+            }
+            
+            if (mean(auc_vals, na.rm = TRUE) > best_auc_in_step) {
+              best_auc_in_step <- mean(auc_vals, na.rm = TRUE)
+              best_inner_model <- model
+              best_inner_iterations <- iter
+              best_inner_vars <- temp_vars
+              improved <- TRUE
+            }
+          }
+        }
+        
+        if (improved) {
+          current_vars <- best_inner_vars
+          best_inner_auc <- best_auc_in_step
+          cat("Vars improved: ", paste(current_vars, collapse=", "), "\n")
+          cat("AUC: ", paste(best_inner_auc), "\n")
+        }
+      }
+      
+      list(model = best_inner_model, auc = best_inner_auc, 
+           iterations = best_inner_iterations, 
+           vars = best_inner_vars)
+    }
+    
+    best_result <- stepAUC(variables, outer_train_data, target_name, iterations, inner_folds)
+    best_model <- best_result$model
+    best_auc <- best_result$auc
+    best_iterations <- best_result$iterations
+    best_vars <- best_result$vars
+
+    # Evaluar el mejor modelo en el validation split del inner loop
+    inner_auc_vals <- numeric()
+    for (inner_index in seq_along(inner_folds)) {
+      inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
+      inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
+      
+      predictions <- predict(best_model, newdata = inner_test_data, type = "response")
+      roc_curve <- roc(inner_test_data[[target_name]], predictions)
+      inner_auc_vals[inner_index] <- roc_curve$auc
+
+      pred_class <- ifelse(predictions > threshold, "1", "0")
+      confusion <- table(Actual = inner_test_data[[target_name]], Predicted = pred_class)
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+      auc <- roc_curve$auc
+      
+      inner_metrics <- setNames(c(outer_index, inner_index, TP, TN, FP, FN, auc), names(inner_fold_metrics))
+      inner_fold_metrics <- rbind(inner_fold_metrics, as.data.frame(t(inner_metrics)))
+    }
+    
+    best_inner_auc <- mean(inner_auc_vals, na.rm = TRUE)
+    
+    predictions <- predict(best_model, outer_test_data, type = "response")
+    pred_class <- ifelse(predictions > threshold, "1", "0")
+    confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
+    
+    if (nrow(confusion) < 2 || ncol(confusion) < 2) {
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+    } else {
+      TP <- confusion[2, 2]
+      TN <- confusion[1, 1]
+      FP <- confusion[1, 2]
+      FN <- confusion[2, 1]
+    }
+    auc <- roc(outer_test_data[[target_name]], predictions)$auc
+    
+    metrics <- setNames(c(outer_index, TP, TN, FP, FN, auc, 
+                          best_iterations, paste(best_vars, collapse = ",")), 
+                        names(performance_metrics))
+    performance_metrics <- rbind(performance_metrics, as.data.frame(t(metrics)))
+    
+    cat("Performance:", paste(performance_metrics))
+    cat(sprintf("Confusion Matrix for Fold %d:\n", outer_index))
+    print(confusion)
+    cat(sprintf("Metrics for Fold %d:\n", outer_index))
+    cat(sprintf("TP: %d, TN: %d, FP: %d, FN: %d, AUC: %f, Best Iterations: %d, Best Variables: %s\n",
+                TP, TN, FP, FN, auc, best_iterations, paste(best_vars, collapse = ",")))
+  }
+  
+  list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics)
+}
+
+
+evaluate_with_seeds_AdaBoost_stepAUC <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, iterations) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed,
+                                   iterations = iterations)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+  }
+
+performance_adaboost_stepAUC <- evaluate_with_seeds_AdaBoost_stepAUC(
+  evaluation_function = double_cross_validation_adaboost_stepAUC,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  vars = todas_variables_factor,
+  threshold = .35,
+  iterations = c(50, 100, 150, 200),
+  seeds = seeds
+)
+```
+
+```{r, message=FALSE, warning=FALSE}
+load("RData_Files_Algorithms/AdaBoost_StepAUC.RData")
+```
+
 ### Embedded (Lasso)
+
+```{r, eval=FALSE}
+double_cross_validation_adaboost_lasso <- function(data, target_name, outer, inner, iterations, variables, threshold, seed) {
+  set.seed(seed)
+  performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
+                                    FP = integer(), FN = integer(), AUC = numeric(),
+                                    Best_Iteration = integer(), 
+                                    Best_Variables = character(), stringsAsFactors = FALSE)
+  
+  inner_fold_metrics <- data.frame(Fold = integer(), Inner_Fold = integer(), 
+                                   TP = integer(), TN = integer(), FP = integer(), 
+                                   FN = integer(), AUC = numeric(), stringsAsFactors = FALSE)
+  
+  # Convertir las variables del dataset con model.matrix
+  target <- as.factor(data[[target_name]])  # Aseguramos que la variable de respuesta sea factor
+  features <- data[, setdiff(names(data), target_name)]
+  data_matrix <- as.data.frame(model.matrix(~ ., data=features)[,-1])  # Eliminar el intercepto
+  data_matrix[[target_name]] <- target
+  
+  outer_folds <- createFolds(data_matrix[[target_name]], k = outer)
+  
+  for (outer_index in seq_along(outer_folds)) {
+    outer_train_data <- data_matrix[-outer_folds[[outer_index]], ]
+    outer_test_data <- data_matrix[outer_folds[[outer_index]], ]
+    
+    cat(sprintf("Outer Fold %d\n", outer_index))
+    cat("Training Data - Class 0: ", sum(outer_train_data[[target_name]] == 0), "\n")
+    cat("Training Data - Class 1: ", sum(outer_train_data[[target_name]] == 1), "\n")
+    cat("Testing Data - Class 0: ", sum(outer_test_data[[target_name]] == 0), "\n")
+    cat("Testing Data - Class 1: ", sum(outer_test_data[[target_name]] == 1), "\n")
+    
+    inner_folds <- createFolds(outer_train_data[[target_name]], k = inner)
+    best_model <- NULL
+    best_auc <- 0
+    best_iteration <- NULL
+    best_vars <- colnames(outer_train_data)[!colnames(outer_train_data) %in% target_name]
+    
+    grid <- expand.grid(iteration = iterations)
+    
+    select_vars_lasso <- function(data, target_name) {
+      target <- as.numeric(data[[target_name]]) - 1  # Convertimos a numérico para Lasso
+      features <- data[, setdiff(names(data), target_name)]
+      X <- model.matrix(~ ., data=features)[,-1]  # Eliminamos el intercepto
+      y <- target
+      
+      # Ajustamos el modelo Lasso
+      lasso_model <- cv.glmnet(X, y, alpha=1)
+      lasso_coef <- coef(lasso_model, s = "lambda.min")
+      
+      # Seleccionamos las variables no nulas
+      selected_vars <- rownames(lasso_coef)[lasso_coef[, 1] != 0]
+      selected_vars <- setdiff(selected_vars, "(Intercept)")
+      #cat("Selected variables by Lasso: ", paste(selected_vars, collapse=", "), "\n")
+      return(selected_vars)
+    }
+    
+    stepAUC <- function(vars, data, target_name, grid, inner_folds) {
+      best_inner_auc <- 0
+      best_inner_model <- NULL
+      best_inner_iteration <- NULL
+      best_inner_vars <- vars
+      improved <- TRUE
+      
+      while (improved && length(vars) > 1) {
+        improved <- FALSE
+        best_auc_in_step <- best_inner_auc
+        
+        for (params in 1:nrow(grid)) {
+          auc_vals <- numeric()
+          
+          for (inner_index in seq_along(inner_folds)) {
+            inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
+            inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
+            
+            selected_vars <- select_vars_lasso(inner_train_data, target_name)
+            formula <- as.formula(paste(target_name, "~", paste(selected_vars, collapse = "+")))
+            #cat("Testing with formula: ", deparse(formula), "\n")
+            #cat("Grid parameters - iteration: ", grid$iteration[params], "\n")
+            
+            result <- tryCatch({
+              model <- blackboost(formula, data = inner_train_data, family = Binomial(), 
+                                  control = boost_control(mstop = grid$iteration[params]))
+              
+              predictions <- predict(model, inner_test_data, type = "response")
+              roc_curve <- roc(inner_test_data[[target_name]], predictions)
+              auc_vals[inner_index] <- roc_curve$auc
+              #cat("AUC for inner fold ", inner_index, ": ", roc_curve$auc, "\n")
+              
+            }, error = function(e) {
+              cat("Error with variables: ", paste(selected_vars, collapse = ", "), "\n")
+              cat("Error message: ", e$message, "\n")
+              auc_vals[inner_index] <- NA  # Set to NA or some other indicator of failure
+            })
+          }
+          
+          mean_auc <- mean(auc_vals, na.rm = TRUE)
+          #cat("Mean AUC for params - iteration: ", grid$iteration[params], ": ", mean_auc, "\n")
+          if (!is.na(mean_auc) && mean_auc > best_auc_in_step) {
+            best_auc_in_step <- mean_auc
+            best_inner_model <- model
+            best_inner_iteration <- grid$iteration[params]
+            best_inner_vars <- selected_vars
+            improved <- TRUE
+          }
+        }
+        
+        if (improved) {
+          vars <- best_inner_vars
+          best_inner_auc <- best_auc_in_step
+          cat("Vars improved: ", paste(vars, collapse=", "), "\n")
+          cat("AUC: ", best_inner_auc, "\n")
+        }
+      }
+      
+      list(model = best_inner_model, auc = best_inner_auc, 
+           iteration = best_inner_iteration, vars = best_inner_vars)
+    }
+    
+    best_result <- stepAUC(best_vars, outer_train_data, target_name, grid, inner_folds)
+    best_model <- best_result$model
+    best_auc <- best_result$auc
+    best_iteration <- best_result$iteration
+    best_vars <- best_result$vars
+    
+    if (is.null(best_model)) {
+      cat("Error: No valid model found for outer fold ", outer_index, "\n")
+      next
+    }
+
+    # Evaluar el mejor modelo en el validation split del inner loop
+    inner_auc_vals <- numeric()
+    for (inner_index in seq_along(inner_folds)) {
+      inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
+      inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
+      
+      predictions <- predict(best_model, inner_test_data, type = "response")
+      roc_curve <- roc(inner_test_data[[target_name]], predictions)
+      inner_auc_vals[inner_index] <- roc_curve$auc
+      cat("Inner fold ", inner_index, " AUC: ", roc_curve$auc, "\n")
+
+      pred_class <- ifelse(predictions > threshold, 1, 0)
+      confusion <- table(Actual = inner_test_data[[target_name]], Predicted = pred_class)
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+      auc <- roc_curve$auc
+      
+      inner_metrics <- setNames(c(outer_index, inner_index, TP, TN, FP, FN, auc), names(inner_fold_metrics))
+      inner_fold_metrics <- rbind(inner_fold_metrics, as.data.frame(t(inner_metrics)))
+    }
+    
+    best_inner_auc <- mean(inner_auc_vals, na.rm = TRUE)
+    cat("Best inner AUC: ", best_inner_auc, "\n")
+    
+    predictions <- predict(best_model, outer_test_data, type = "response")
+    pred_class <- ifelse(predictions > threshold, 1, 0)  # Asignar clases basadas en umbral
+    confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
+    
+    if (nrow(confusion) < 2 || ncol(confusion) < 2) {
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+    } else {
+      TP <- confusion[2, 2]
+      TN <- confusion[1, 1]
+      FP <- confusion[1, 2]
+      FN <- confusion[2, 1]
+    }
+    auc <- roc(outer_test_data[[target_name]], predictions)$auc
+    
+    metrics <- setNames(c(outer_index, TP, TN, FP, FN, auc, 
+                          best_iteration, paste(best_vars, collapse = ",")), 
+                        names(performance_metrics))
+    performance_metrics <- rbind(performance_metrics, as.data.frame(t(metrics)))
+    
+    cat("Performance:\n", paste(performance_metrics), "\n")
+    cat(sprintf("Confusion Matrix for Fold %d:\n", outer_index))
+    print(confusion)
+    cat(sprintf("Metrics for Fold %d:\n", outer_index))
+    cat(sprintf("TP: %d, TN: %d, FP: %d, FN: %d, AUC: %f, Best Iteration: %d, Best Variables: %s\n",
+                TP, TN, FP, FN, auc, best_iteration, paste(best_vars, collapse = ",")))
+  }
+  
+  list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics)
+}
+
+evaluate_with_seeds_AdaBoost_Lasso <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, iterations) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed,
+                                   iterations = iterations)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+  }
+
+performance_adaboost_lasso <- evaluate_with_seeds_AdaBoost_stepAUC(
+  evaluation_function = double_cross_validation_adaboost_lasso,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  vars = todas_variables_factor,
+  threshold = .35,
+  iterations = c(50, 100, 150, 200),
+  seeds = seeds
+)
+```
+
+```{r, message=FALSE, warning=FALSE}
+load("RData_Files_Algorithms/AdaBoost_Lasso.RData")
+```
 
 ## Random Forest 
 
+### Aparente
+
+```{r, eval=FALSE}
+evaluate_aparent_performance_model_rpart <- function(data, target_var, model_func, vars = NULL, threshold = 0.5) {
+  if (is.null(vars)) {
+    vars <- setdiff(names(data), target_var)
+  }
+  
+  data[[target_var]] <- factor(data[[target_var]], levels = c(0, 1))
+  formula <- as.formula(paste(target_var, "~", paste(vars, collapse = "+")))
+  
+  model <- model_func(formula, data)
+  predictions <- predict(model, newdata = data, type = "prob")[, 2]
+  
+  actual_classes <- data[[target_var]]
+  predicted_classes <- ifelse(predictions > threshold, 1, 0)
+  confusion_matrix <- table(predicted_classes, actual_classes)
+  
+  tp <- ifelse("1" %in% rownames(confusion_matrix) && "1" %in% colnames(confusion_matrix), confusion_matrix["1", "1"], 0)
+  tn <- ifelse("0" %in% rownames(confusion_matrix) && "0" %in% colnames(confusion_matrix), confusion_matrix["0", "0"], 0)
+  fp <- ifelse("1" %in% rownames(confusion_matrix) && "0" %in% colnames(confusion_matrix), confusion_matrix["1", "0"], 0)
+  fn <- ifelse("0" %in% rownames(confusion_matrix) && "1" %in% colnames(confusion_matrix), confusion_matrix["0", "1"], 0)
+  
+  accuracy <- (tp + tn) / (tp + tn + fp + fn)
+  precision <- ifelse(tp + fp > 0, tp / (tp + fp), 0)
+  recall <- ifelse(tp + fn > 0, tp / (tp + fn), 0)
+  f1_score <- ifelse(precision + recall > 0, 2 * (precision * recall) / (precision + recall), 0)
+  roc_obj <- pROC::roc(actual_classes, predictions)
+  
+  list(confusion_matrix = confusion_matrix, accuracy = accuracy, precision = precision, 
+       recall = recall, f1_score = f1_score, roc_curve = roc_obj)
+}
+
+
+rf_model <- function(formula, data) {
+  set.seed(90)
+  rpart(formula = formula, data = data, method = "class", control = rpart.control(minsplit = 2, cp = 0))
+}
+
+
+resultadosAparentesRF <- evaluate_aparent_performance_model_rpart(data = data_factor, target_var = "PCR",
+                                                             model_func = rf_model,
+                                                             vars = ".",
+                                                             threshold = .35)
+```
+
+```{r, message=FALSE, warning=FALSE}
+load("RData_Files_Algorithms/RandomForest_Aparente")
+```
+
 ### Todas las Variables
+
+```{r, eval=FALSE}
+double_cross_validation_rpart <- function(data, target_name, outer, inner, cp_values, minsplit_values, variables, threshold, seed) {
+  set.seed(seed)
+  performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
+                                    FP = integer(), FN = integer(), AUC = numeric(),
+                                    Best_cp = numeric(), Best_minsplit = integer(), stringsAsFactors = FALSE)
+  
+  data[[target_name]] <- as.factor(data[[target_name]])
+  outer_folds <- createFolds(data[[target_name]], k = outer)
+  
+  for (outer_index in seq_along(outer_folds)) {
+    outer_train_data <- data[-outer_folds[[outer_index]], ]
+    outer_test_data <- data[outer_folds[[outer_index]], ]
+    
+    # Imprime la cantidad de instancias de cada clase en el outer train y test set
+    cat(sprintf("Outer Fold %d\n", outer_index))
+    cat("Training Data - Class 0: ", sum(outer_train_data[[target_name]] == 0), "\n")
+    cat("Training Data - Class 1: ", sum(outer_train_data[[target_name]] == 1), "\n")
+    cat("Testing Data - Class 0: ", sum(outer_test_data[[target_name]] == 0), "\n")
+    cat("Testing Data - Class 1: ", sum(outer_test_data[[target_name]] == 1), "\n")
+    
+    inner_folds <- createFolds(outer_train_data[[target_name]], k = inner)
+    best_model <- NULL
+    best_auc <- 0
+    best_cp <- NULL
+    best_minsplit <- NULL
+    
+    grid <- expand.grid(cp = cp_values, minsplit = minsplit_values)
+    
+    for (params in 1:nrow(grid)) {
+      inner_auc <- numeric()
+      
+      for (inner_index in seq_along(inner_folds)) {
+        inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
+        inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
+        
+        model <- rpart(formula = as.formula(paste(target_name, "~", paste(variables, collapse = "+"))),
+                       data = inner_train_data, control = rpart.control(cp = grid$cp[params], minsplit = grid$minsplit[params]))
+        
+        predictions <- predict(model, inner_test_data, type = "prob")[, 2]
+        roc_curve <- roc(inner_test_data[[target_name]], predictions)
+        inner_auc[inner_index] <- roc_curve$auc
+      }
+      
+      if (mean(inner_auc) > best_auc) {
+        best_auc = mean(inner_auc)
+        best_model = model
+        best_cp = grid$cp[params]
+        best_minsplit = grid$minsplit[params]
+      }
+    }
+    
+    predictions <- predict(best_model, outer_test_data, type = "prob")[, 2]
+    pred_class <- ifelse(predictions > threshold, 1, 0)  # Asignar clases basadas en umbral
+    confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
+    
+    if (nrow(confusion) < 2 || ncol(confusion) < 2) {
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+    } else {
+      TP <- confusion[2, 2]
+      TN <- confusion[1, 1]
+      FP <- confusion[1, 2]
+      FN <- confusion[2, 1]
+    }
+    auc = roc(outer_test_data[[target_name]], predictions)$auc
+    
+    metrics <- setNames(c(outer_index, TP, TN, FP, FN, auc, best_cp, best_minsplit), names(performance_metrics))
+    performance_metrics <- rbind(performance_metrics, as.data.frame(t(metrics)))
+  }
+  
+  return(performance_metrics)
+}
+
+evaluate_with_seeds_RandomForest_TodasVariables_Asociacion <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, cp_values, minsplit_values) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed,
+                                   cp_values = cp_values,
+                                   minsplit_values = minsplit_values)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+  }
+
+performance_rpart_todasvariables <- evaluate_with_seeds_RandomForest_TodasVariables_Asociacion(
+  evaluation_function = double_cross_validation_rpart,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  cp_values = c(0.001, 0.01, 0.1),
+  minsplit_values = c(2, 5, 10, 15, 20),
+  vars = todas_variables_factor,
+  threshold = .35,
+  seeds = seeds
+)
+```
+
+```{r, message=FALSE, warning=FALSE}
+load("RData_Files_Algorithms/RandomForest_TodasVariables")
+```
 
 ### Filtrado (Asociación)
 
+```{r, eval=FALSE}
+performance_rpart_Asociacion <- evaluate_with_seeds_RandomForest_TodasVariables_Asociacion(
+  evaluation_function = double_cross_validation_rpart,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  cp_values = c(0.001, 0.01, 0.1),
+  minsplit_values = c(2, 5, 10, 15, 20),
+  vars = asociacion,
+  threshold = .35,
+  seeds = seeds
+)
+```
+
+```{r, message=FALSE, warning=FALSE}
+load("RData_Files_Algorithms/RandomForest_Asociacion")
+```
 ### Wrapped (StepAUC)
 
+```{r, eval=FALSE}
+double_cross_validation_rpart_stepAUC <- function(data, target_name, outer, inner, cps, minsplits, variables, threshold, seed) {
+  set.seed(seed)
+  performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
+                                    FP = integer(), FN = integer(), AUC = numeric(),
+                                    Best_CP = numeric(), Best_Minsplit = integer(), 
+                                    Best_Variables = character(), stringsAsFactors = FALSE)
+  
+  inner_fold_metrics <- data.frame(Fold = integer(), Inner_Fold = integer(), 
+                                   TP = integer(), TN = integer(), FP = integer(), 
+                                   FN = integer(), AUC = numeric(), stringsAsFactors = FALSE)
+  
+  data[[target_name]] <- as.factor(data[[target_name]])
+  outer_folds <- createFolds(data[[target_name]], k = outer)
+  
+  for (outer_index in seq_along(outer_folds)) {
+    outer_train_data <- data[-outer_folds[[outer_index]], ]
+    outer_test_data <- data[outer_folds[[outer_index]], ]
+    
+    cat(sprintf("Outer Fold %d\n", outer_index))
+    cat("Training Data - Class 0: ", sum(outer_train_data[[target_name]] == "0"), "\n")
+    cat("Training Data - Class 1: ", sum(outer_train_data[[target_name]] == "1"), "\n")
+    cat("Testing Data - Class 0: ", sum(outer_test_data[[target_name]] == "0"), "\n")
+    cat("Testing Data - Class 1: ", sum(outer_test_data[[target_name]] == "1"), "\n")
+    
+    inner_folds <- createFolds(outer_train_data[[target_name]], k = inner)
+    best_model <- NULL
+    best_auc <- 0
+    best_cp <- NULL
+    best_minsplit <- NULL
+    best_vars <- variables
+    
+    grid <- expand.grid(cp = cps, minsplit = minsplits)
+    
+    stepAUC <- function(vars, data, target_name, grid, inner_folds) {
+      current_vars <- vars
+      best_inner_auc <- 0
+      best_inner_model <- NULL
+      best_inner_cp <- NULL
+      best_inner_minsplit <- NULL
+      best_inner_vars <- current_vars
+      improved <- TRUE
+      
+      while (improved && length(current_vars) > 1) {
+        improved <- FALSE
+        best_auc_in_step <- best_inner_auc
+        
+        for (var in current_vars) {
+          temp_vars <- setdiff(current_vars, var)
+          inner_auc <- numeric()
+          
+          for (params in 1:nrow(grid)) {
+            auc_vals <- numeric()
+            
+            for (inner_index in seq_along(inner_folds)) {
+              inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
+              inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
+              
+              result <- tryCatch({
+                model <- rpart(as.formula(paste(target_name, "~", paste(temp_vars, collapse = "+"))),
+                               data = inner_train_data, control = rpart.control(cp = grid$cp[params], minsplit = grid$minsplit[params]))
+                
+                predictions <- predict(model, inner_test_data, type = "prob")[, 2]
+                roc_curve <- roc(inner_test_data[[target_name]], predictions)
+                auc_vals[inner_index] <- roc_curve$auc
+                
+              }, error = function(e) {
+                cat("Error with variables:", paste(temp_vars, collapse = ", "), "\n")
+                auc_vals[inner_index] <- 0
+              })
+            }
+            
+            if (mean(auc_vals, na.rm = TRUE) > best_auc_in_step) {
+              best_auc_in_step <- mean(auc_vals, na.rm = TRUE)
+              best_inner_model <- model
+              best_inner_cp <- grid$cp[params]
+              best_inner_minsplit <- grid$minsplit[params]
+              best_inner_vars <- temp_vars
+              improved <- TRUE
+            }
+          }
+        }
+        
+        if (improved) {
+          current_vars <- best_inner_vars
+          best_inner_auc <- best_auc_in_step
+          cat("Vars improved: ", paste(current_vars, collapse=", "), "\n")
+          cat("AUC: ", paste(best_inner_auc), "\n")
+        }
+      }
+      
+      list(model = best_inner_model, auc = best_inner_auc, 
+           cp = best_inner_cp, minsplit = best_inner_minsplit, 
+           vars = best_inner_vars)
+    }
+    
+    best_result <- stepAUC(variables, outer_train_data, target_name, grid, inner_folds)
+    best_model <- best_result$model
+    best_auc <- best_result$auc
+    best_cp <- best_result$cp
+    best_minsplit <- best_result$minsplit
+    best_vars <- best_result$vars
+
+    # Evaluar el mejor modelo en el validation split del inner loop
+    inner_auc_vals <- numeric()
+    for (inner_index in seq_along(inner_folds)) {
+      inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
+      inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
+      
+      predictions <- predict(best_model, inner_test_data, type = "prob")[, 2]
+      roc_curve <- roc(inner_test_data[[target_name]], predictions)
+      inner_auc_vals[inner_index] <- roc_curve$auc
+
+      pred_class <- ifelse(predictions > threshold, "1", "0")
+      confusion <- table(Actual = inner_test_data[[target_name]], Predicted = pred_class)
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+      auc <- roc_curve$auc
+      
+      inner_metrics <- setNames(c(outer_index, inner_index, TP, TN, FP, FN, auc), names(inner_fold_metrics))
+      inner_fold_metrics <- rbind(inner_fold_metrics, as.data.frame(t(inner_metrics)))
+    }
+    
+    best_inner_auc <- mean(inner_auc_vals, na.rm = TRUE)
+    
+    predictions <- predict(best_model, outer_test_data, type = "prob")[, 2]
+    pred_class <- ifelse(predictions > threshold, "1", "0")
+    confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
+    
+    if (nrow(confusion) < 2 || ncol(confusion) < 2) {
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+    } else {
+      TP <- confusion[2, 2]
+      TN <- confusion[1, 1]
+      FP <- confusion[1, 2]
+      FN <- confusion[2, 1]
+    }
+    auc <- roc(outer_test_data[[target_name]], predictions)$auc
+    
+    metrics <- setNames(c(outer_index, TP, TN, FP, FN, auc, 
+                          best_cp, best_minsplit, paste(best_vars, collapse = ",")), 
+                        names(performance_metrics))
+    performance_metrics <- rbind(performance_metrics, as.data.frame(t(metrics)))
+    
+    cat("Performance:", paste(performance_metrics))
+    cat(sprintf("Confusion Matrix for Fold %d:\n", outer_index))
+    print(confusion)
+    cat(sprintf("Metrics for Fold %d:\n", outer_index))
+    cat(sprintf("TP: %d, TN: %d, FP: %d, FN: %d, AUC: %f, Best CP: %f, Best Minsplit: %d, Best Variables: %s\n",
+                TP, TN, FP, FN, auc, best_cp, best_minsplit, paste(best_vars, collapse = ",")))
+  }
+  
+  list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics)
+}
+
+evaluate_with_seeds_RandomForest_StepAUC <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, cp_values, minsplit_values) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed,
+                                   cp_values = cp_values,
+                                   minsplit_values = minsplit_values)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+  }
+
+performance_rpart_StepAUC <- evaluate_with_seeds_RandomForest_StepAUC(
+  evaluation_function = double_cross_validation_rpart,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  cp_values = c(0.001, 0.01, 0.1),
+  minsplit_values = c(2, 5, 10, 15, 20),
+  vars = todas_variables_factor,
+  threshold = .35,
+  seeds = seeds
+)
+```
+
+```{r, message=FALSE, warning=FALSE}
+load("RData_Files_Algorithms/RandomForest_StepAUC")
+```
+
 ### Embedded (Lasso)
+
+```{r, eval=FALSE}
+double_cross_validation_rpart_Lasso <- function(data, target_name, outer, inner, cps, minsplits, variables, threshold, seed) {
+  set.seed(seed)
+  performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
+                                    FP = integer(), FN = integer(), AUC = numeric(),
+                                    Best_cp = numeric(), Best_minsplit = numeric(), 
+                                    Best_Variables = character(), stringsAsFactors = FALSE)
+  
+  inner_fold_metrics <- data.frame(Fold = integer(), Inner_Fold = integer(), 
+                                   TP = integer(), TN = integer(), FP = integer(), 
+                                   FN = integer(), AUC = numeric(), stringsAsFactors = FALSE)
+  
+  # Convertir las variables del dataset con model.matrix
+  target <- as.numeric(data[[target_name]]) - 1
+  features <- data[, setdiff(names(data), target_name)]
+  data_matrix <- as.data.frame(model.matrix(~ ., data=features)[,-1])  # Eliminar el intercepto
+  data_matrix[[target_name]] <- target
+  
+  outer_folds <- createFolds(data_matrix[[target_name]], k = outer)
+  
+  for (outer_index in seq_along(outer_folds)) {
+    outer_train_data <- data_matrix[-outer_folds[[outer_index]], ]
+    outer_test_data <- data_matrix[outer_folds[[outer_index]], ]
+    
+    cat(sprintf("Outer Fold %d\n", outer_index))
+    cat("Training Data - Class 0: ", sum(outer_train_data[[target_name]] == 0), "\n")
+    cat("Training Data - Class 1: ", sum(outer_train_data[[target_name]] == 1), "\n")
+    cat("Testing Data - Class 0: ", sum(outer_test_data[[target_name]] == 0), "\n")
+    cat("Testing Data - Class 1: ", sum(outer_test_data[[target_name]] == 1), "\n")
+    
+    inner_folds <- createFolds(outer_train_data[[target_name]], k = inner)
+    best_model <- NULL
+    best_auc <- 0
+    best_cp <- NULL
+    best_minsplit <- NULL
+    best_vars <- colnames(outer_train_data)[!colnames(outer_train_data) %in% target_name]
+    
+    grid <- expand.grid(cp = cps, minsplit = minsplits)
+    
+    select_vars_lasso <- function(data, target_name) {
+      target <- as.numeric(data[[target_name]])
+      features <- data[, setdiff(names(data), target_name)]
+      X <- model.matrix(~ ., data=features)[,-1]  # Eliminamos el intercepto
+      y <- target
+      
+      # Ajustamos el modelo Lasso
+      lasso_model <- cv.glmnet(X, y, alpha=1)
+      lasso_coef <- coef(lasso_model, s = "lambda.min")
+      
+      # Seleccionamos las variables no nulas
+      selected_vars <- rownames(lasso_coef)[lasso_coef[, 1] != 0]
+      selected_vars <- setdiff(selected_vars, "(Intercept)")
+      #cat("Selected variables by Lasso: ", paste(selected_vars, collapse=", "), "\n")
+      return(selected_vars)
+    }
+    
+    stepAUC <- function(vars, data, target_name, grid, inner_folds) {
+      best_inner_auc <- 0
+      best_inner_model <- NULL
+      best_inner_cp <- NULL
+      best_inner_minsplit <- NULL
+      best_inner_vars <- vars
+      improved <- TRUE
+      
+      while (improved && length(vars) > 1) {
+        improved <- FALSE
+        best_auc_in_step <- best_inner_auc
+        
+        for (params in 1:nrow(grid)) {
+          auc_vals <- numeric()
+          
+          for (inner_index in seq_along(inner_folds)) {
+            inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
+            inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
+            
+            selected_vars <- select_vars_lasso(inner_train_data, target_name)
+            formula <- as.formula(paste(target_name, "~", paste(selected_vars, collapse = "+")))
+            #cat("Testing with formula: ", deparse(formula), "\n")
+            #cat("Grid parameters - cp: ", grid$cp[params], ", minsplit: ", grid$minsplit[params], "\n")
+            
+            result <- tryCatch({
+              model <- rpart(formula, data = inner_train_data, method = "class", 
+                             control = rpart.control(cp = grid$cp[params], minsplit = grid$minsplit[params]))
+              
+              predictions <- predict(model, inner_test_data, type = "prob")[,2]
+              roc_curve <- roc(inner_test_data[[target_name]], predictions)
+              auc_vals[inner_index] <- roc_curve$auc
+              #cat("AUC for inner fold ", inner_index, ": ", roc_curve$auc, "\n")
+              
+            }, error = function(e) {
+              cat("Error with variables: ", paste(selected_vars, collapse = ", "), "\n")
+              cat("Error message: ", e$message, "\n")
+              auc_vals[inner_index] <- NA  # Set to NA or some other indicator of failure
+            })
+          }
+          
+          mean_auc <- mean(auc_vals, na.rm = TRUE)
+          #cat("Mean AUC for params - cp: ", grid$cp[params], ", minsplit: ", grid$minsplit[params], ": ", mean_auc, "\n")
+          if (!is.na(mean_auc) && mean_auc > best_auc_in_step) {
+            best_auc_in_step <- mean_auc
+            best_inner_model <- model
+            best_inner_cp <- grid$cp[params]
+            best_inner_minsplit <- grid$minsplit[params]
+            best_inner_vars <- selected_vars
+            improved <- TRUE
+          }
+        }
+        
+        if (improved) {
+          vars <- best_inner_vars
+          best_inner_auc <- best_auc_in_step
+          cat("Vars improved: ", paste(vars, collapse=", "), "\n")
+          cat("AUC: ", best_inner_auc, "\n")
+        }
+      }
+      
+      list(model = best_inner_model, auc = best_inner_auc, 
+           cp = best_inner_cp, minsplit = best_inner_minsplit, 
+           vars = best_inner_vars)
+    }
+    
+    best_result <- stepAUC(best_vars, outer_train_data, target_name, grid, inner_folds)
+    best_model <- best_result$model
+    best_auc <- best_result$auc
+    best_cp <- best_result$cp
+    best_minsplit <- best_result$minsplit
+    best_vars <- best_result$vars
+    
+    if (is.null(best_model)) {
+      cat("Error: No valid model found for outer fold ", outer_index, "\n")
+      next
+    }
+
+    # Evaluar el mejor modelo en el validation split del inner loop
+    inner_auc_vals <- numeric()
+    for (inner_index in seq_along(inner_folds)) {
+      inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
+      inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
+      
+      predictions <- predict(best_model, inner_test_data, type = "prob")[,2]
+      roc_curve <- roc(inner_test_data[[target_name]], predictions)
+      inner_auc_vals[inner_index] <- roc_curve$auc
+      #cat("Inner fold ", inner_index, " AUC: ", roc_curve$auc, "\n")
+
+      pred_class <- ifelse(predictions > threshold, 1, 0)
+      confusion <- table(Actual = inner_test_data[[target_name]], Predicted = pred_class)
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+      auc <- roc_curve$auc
+      
+      inner_metrics <- setNames(c(outer_index, inner_index, TP, TN, FP, FN, auc), names(inner_fold_metrics))
+      inner_fold_metrics <- rbind(inner_fold_metrics, as.data.frame(t(inner_metrics)))
+    }
+    
+    best_inner_auc <- mean(inner_auc_vals, na.rm = TRUE)
+    cat("Best inner AUC: ", best_inner_auc, "\n")
+    
+    predictions <- predict(best_model, outer_test_data, type = "prob")[,2]
+    pred_class <- ifelse(predictions > threshold, 1, 0)  # Asignar clases basadas en umbral
+    confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
+    
+    if (nrow(confusion) < 2 || ncol(confusion) < 2) {
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+    } else {
+      TP <- confusion[2, 2]
+      TN <- confusion[1, 1]
+      FP <- confusion[1, 2]
+      FN <- confusion[2, 1]
+    }
+    auc <- roc(outer_test_data[[target_name]], predictions)$auc
+    
+    metrics <- setNames(c(outer_index, TP, TN, FP, FN, auc, 
+                          best_cp, best_minsplit, paste(best_vars, collapse = ",")), 
+                        names(performance_metrics))
+    performance_metrics <- rbind(performance_metrics, as.data.frame(t(metrics)))
+    
+    cat("Performance:\n", paste(performance_metrics), "\n")
+    cat(sprintf("Confusion Matrix for Fold %d:\n", outer_index))
+    print(confusion)
+    cat(sprintf("Metrics for Fold %d:\n", outer_index))
+    cat(sprintf("TP: %d, TN: %d, FP: %d, FN: %d, AUC: %f, Best cp: %f, Best minsplit: %d, Best Variables: %s\n",
+                TP, TN, FP, FN, auc, best_cp, best_minsplit, paste(best_vars, collapse = ",")))
+  }
+  
+  list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics)
+}
+
+evaluate_with_seeds_RandomForest_lasso <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, cp_values, minsplit_values) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed,
+                                   cps = cp_values,
+                                   minsplits = minsplit_values)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+  }
+
+performance_rpart_lasso <- evaluate_with_seeds_RandomForest_lasso(
+  evaluation_function = double_cross_validation_rpart_Lasso,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  cp_values = c(0.001, 0.01, 0.1),
+  minsplit_values = c(2, 5, 10, 15, 20),
+  vars = todas_variables_factor,
+  threshold = .35,
+  seeds = seeds
+)
+```
+
+```{r, message=FALSE, warning=FALSE}
+load("RData_Files_Algorithms/RandomForest_Lasso")
+```
 
 ## K-Nearest Neighbours 
 
+### Aparente
+
+```{r, eval=FALSE}
+evaluate_aparent_performance_model_knn <- function(data, target_var, model_func, vars = NULL, threshold = 0.5) {
+  if (is.null(vars)) {
+    vars <- setdiff(names(data), target_var)
+  }
+  
+  data[[target_var]] <- factor(data[[target_var]], levels = c(0, 1))
+  formula <- as.formula(paste(target_var, "~", paste(vars, collapse = "+")))
+  
+  model <- model_func(formula, data)
+  train_x <- model$train_x
+  train_y <- model$train_y
+  test_x <- model.matrix(formula, data)[, -1]
+  predictions <- knn(train = train_x, test = test_x, cl = train_y, k = model$k, prob = TRUE)
+  predictions <- attr(predictions, "prob")
+  
+  actual_classes <- data[[target_var]]
+  predicted_classes <- ifelse(predictions > threshold, 1, 0)
+  confusion_matrix <- table(predicted_classes, actual_classes)
+  
+  tp <- ifelse("1" %in% rownames(confusion_matrix) && "1" %in% colnames(confusion_matrix), confusion_matrix["1", "1"], 0)
+  tn <- ifelse("0" %in% rownames(confusion_matrix) && "0" %in% colnames(confusion_matrix), confusion_matrix["0", "0"], 0)
+  fp <- ifelse("1" %in% rownames(confusion_matrix) && "0" %in% colnames(confusion_matrix), confusion_matrix["1", "0"], 0)
+  fn <- ifelse("0" %in% rownames(confusion_matrix) && "1" %in% colnames(confusion_matrix), confusion_matrix["0", "1"], 0)
+  
+  accuracy <- (tp + tn) / (tp + tn + fp + fn)
+  precision <- ifelse(tp + fp > 0, tp / (tp + fp), 0)
+  recall <- ifelse(tp + fn > 0, tp / (tp + fn), 0)
+  f1_score <- ifelse(precision + recall > 0, 2 * (precision * recall) / (precision + recall), 0)
+  roc_obj <- pROC::roc(actual_classes, predictions)
+  
+  list(confusion_matrix = confusion_matrix, accuracy = accuracy, precision = precision, 
+       recall = recall, f1_score = f1_score, roc_curve = roc_obj)
+}
+
+
+knn_model <- function(formula, data) {
+  train_x <- model.matrix(formula, data)[, -1]
+  train_y <- data[[all.vars(formula)[1]]]
+  list(train_x = train_x, train_y = train_y, k = 5)  
+}
+
+resultadosAparentesKNN <- evaluate_aparent_performance_model_knn(data = data_numeric, target_var = "PCR",
+                                                             model_func = knn_model,
+                                                             vars = ".",
+                                                             threshold = .35)
+```
+
+```{r, message=FALSE, warning=FALSE}
+load("RData_Files_Algorithms/KNN_Aparente")
+```
+
 ### Todas las Variables
+
+```{r, eval=FALSE}
+double_cross_validation_knn <- function(data, target_name, outer, inner, ks, ls, variables, threshold, seed) {
+  set.seed(seed)
+  performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
+                                    FP = integer(), FN = integer(), AUC = numeric(),
+                                    Best_k = integer(), Best_l = numeric(), stringsAsFactors = FALSE)
+  
+  data[[target_name]] <- as.factor(data[[target_name]])
+  outer_folds <- createFolds(data[[target_name]], k = outer, list = TRUE, returnTrain = FALSE)
+  
+  for (outer_index in seq_along(outer_folds)) {
+    outer_train_data <- data[-outer_folds[[outer_index]], ]
+    outer_test_data <- data[outer_folds[[outer_index]], ]
+    
+    cat(sprintf("Outer Fold %d\n", outer_index))
+    cat("Training Data - Class 0: ", sum(outer_train_data[[target_name]] == "0"), "\n")
+    cat("Training Data - Class 1: ", sum(outer_train_data[[target_name]] == "1"), "\n")
+    cat("Testing Data - Class 0: ", sum(outer_test_data[[target_name]] == "0"), "\n")
+    cat("Testing Data - Class 1: ", sum(outer_test_data[[target_name]] == "1"), "\n")
+    
+    if (sum(outer_train_data[[target_name]] == "0") == 0 || sum(outer_train_data[[target_name]] == "1") == 0) {
+      cat("Skipping outer fold due to lack of class diversity\n")
+      next
+    }
+    
+    inner_folds <- createFolds(outer_train_data[[target_name]], k = inner, list = TRUE, returnTrain = FALSE)
+    best_model <- NULL
+    best_auc <- 0
+    best_k <- NULL
+    best_l <- NULL
+    
+    grid <- expand.grid(k = ks, l = ls)
+    formula <- reformulate(variables, target_name)
+
+    for (params in 1:nrow(grid)) {
+      inner_auc <- numeric()
+
+      for (inner_index in seq_along(inner_folds)) {
+        inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
+        inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
+
+        if (sum(inner_train_data[[target_name]] == "0") == 0 || sum(inner_train_data[[target_name]] == "1") == 0) {
+          cat("Skipping inner fold due to lack of class diversity\n")
+          next
+        }
+
+        train_x <- inner_train_data[, variables, drop = FALSE]
+        test_x <- inner_test_data[, variables, drop = FALSE]
+        train_y <- inner_train_data[[target_name]]
+        test_y <- inner_test_data[[target_name]]
+        
+        result <- tryCatch({
+          predictions <- knn(train = train_x, test = test_x, cl = train_y, k = grid$k[params], prob = TRUE)
+          probabilities <- attr(predictions, "prob")
+          probabilities <- ifelse(predictions == "1", probabilities, 1 - probabilities)
+          roc_curve <- roc(as.numeric(as.character(test_y)), probabilities)
+          inner_auc[inner_index] <- roc_curve$auc
+        }, error = function(e) {
+          cat("Error with parameters: k =", grid$k[params], ", l =", grid$l[params], "\n")
+          cat("Error message: ", e$message, "\n")
+          inner_auc[inner_index] <- 0
+        })
+      }
+
+      if (mean(inner_auc, na.rm = TRUE) > best_auc) {
+        best_auc <- mean(inner_auc, na.rm = TRUE)
+        best_model <- list(train_x = train_x, train_y = train_y, k = grid$k[params], l = grid$l[params])
+        best_k <- grid$k[params]
+        best_l <- grid$l[params]
+      }
+    }
+
+    if (is.null(best_model)) {
+      cat("No valid model found for outer fold ", outer_index, "\n")
+      next
+    }
+
+    test_x <- outer_test_data[, variables, drop = FALSE]
+    test_y <- outer_test_data[[target_name]]
+    predictions <- knn(train = best_model$train_x, test = test_x, cl = best_model$train_y, k = best_k, prob = TRUE)
+    probabilities <- attr(predictions, "prob")
+    probabilities <- ifelse(predictions == "1", probabilities, 1 - probabilities)
+    pred_class <- ifelse(probabilities > threshold, "1", "0")
+    confusion <- table(Actual = test_y, Predicted = pred_class)
+    
+    if (nrow(confusion) < 2 || ncol(confusion) < 2) {
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+    } else {
+      TP <- confusion[2, 2]
+      TN <- confusion[1, 1]
+      FP <- confusion[1, 2]
+      FN <- confusion[2, 1]
+    }
+    auc <- roc(test_y, probabilities)$auc
+    
+    metrics <- setNames(c(outer_index, TP, TN, FP, FN, auc, best_k, best_l), names(performance_metrics))
+    performance_metrics <- rbind(performance_metrics, as.data.frame(t(metrics)))
+    
+    cat("Performance:", paste(performance_metrics))
+    cat(sprintf("Confusion Matrix for Fold %d:\n", outer_index))
+    print(confusion)
+    cat(sprintf("Metrics for Fold %d:\n", outer_index))
+    cat(sprintf("TP: %d, TN: %d, FP: %d, FN: %d, AUC: %f, Best k: %d, Best l: %f\n",
+                TP, TN, FP, FN, auc, best_k, best_l))
+  }
+  
+  return(performance_metrics)
+}
+
+evaluate_with_seeds_KNN_TodasVariables_Asociacion <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, ks, ls) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed,
+                                   ks = ks,
+                                   ls = ls)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+  }
+
+performance_knn_todasvariables <- evaluate_with_seeds_KNN_TodasVariables_Asociacion(
+  evaluation_function = double_cross_validation_knn,
+  data = data_numeric,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  ks = c(10, 16, 20, 25, 30, 32),
+  ls = c(0, 1, 2),
+  vars = todas_variables_numeric,
+  threshold = .35,
+  seeds = seeds
+)
+```
+
+```{r, message=FALSE, warning=FALSE}
+load("RData_Files_Algorithms/KNN_TodasVariables")
+```
 
 ### Filtrado (Asociación)
 
+```{r, eval=FALSE}
+performance_knn_Asociacion <- evaluate_with_seeds_KNN_TodasVariables_Asociacion(
+  evaluation_function = double_cross_validation_knn,
+  data = data_numeric,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  ks = c(10, 16, 20, 25, 30, 32),
+  ls = c(0, 1, 2),
+  vars = asociacion_numeric,
+  threshold = .35,
+  seeds = seeds
+)
+```
+
+```{r, message=FALSE, warning=FALSE}
+load("RData_Files_Algorithms/KNN_Asociacion")
+```
+
 ### Wrapped (StepAUC)
 
+```{r, eval=FALSE}
+double_cross_validation_knn_stepAUC <- function(data, target_name, outer, inner, ks, ls, variables, threshold, seed) {
+  set.seed(seed)
+  performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
+                                    FP = integer(), FN = integer(), AUC = numeric(),
+                                    Best_k = integer(), Best_l = numeric(), Best_Variables = character(), stringsAsFactors = FALSE)
+  
+  inner_fold_metrics <- data.frame(Fold = integer(), Inner_Fold = integer(), 
+                                   TP = integer(), TN = integer(), FP = integer(), 
+                                   FN = integer(), AUC = numeric(), stringsAsFactors = FALSE)
+  
+  data[[target_name]] <- as.factor(data[[target_name]])
+  outer_folds <- createFolds(data[[target_name]], k = outer, list = TRUE, returnTrain = FALSE)
+  
+  for (outer_index in seq_along(outer_folds)) {
+    outer_train_data <- data[-outer_folds[[outer_index]], ]
+    outer_test_data <- data[outer_folds[[outer_index]], ]
+    
+    cat(sprintf("Outer Fold %d\n", outer_index))
+    cat("Training Data - Class 0: ", sum(outer_train_data[[target_name]] == "0"), "\n")
+    cat("Training Data - Class 1: ", sum(outer_train_data[[target_name]] == "1"), "\n")
+    cat("Testing Data - Class 0: ", sum(outer_test_data[[target_name]] == "0"), "\n")
+    cat("Testing Data - Class 1: ", sum(outer_test_data[[target_name]] == "1"), "\n")
+    
+    inner_folds <- createFolds(outer_train_data[[target_name]], k = inner, list = TRUE, returnTrain = FALSE)
+    best_model <- NULL
+    best_auc <- 0
+    best_k <- NULL
+    best_l <- NULL
+    best_vars <- variables
+    
+    grid <- expand.grid(k = ks, l = ls)
+    
+    stepAUC <- function(vars, outer_train_data, target_name, grid, inner_folds) {
+      current_vars <- vars
+      best_inner_auc <- 0
+      best_inner_model <- NULL
+      best_inner_k <- NULL
+      best_inner_l <- NULL
+      best_inner_vars <- current_vars
+      improved <- TRUE
+      
+      while (improved && length(current_vars) > 1) {
+        improved <- FALSE
+        best_auc_in_step <- best_inner_auc
+        
+        for (var in current_vars) {
+          temp_vars <- setdiff(current_vars, var)
+          inner_auc <- numeric()
+          
+          for (params in 1:nrow(grid)) {
+            auc_vals <- numeric()
+            
+            for (inner_index in seq_along(inner_folds)) {
+              inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
+              inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
+              
+              train_x <- inner_train_data[, temp_vars, drop = FALSE]
+              test_x <- inner_test_data[, temp_vars, drop = FALSE]
+              train_y <- inner_train_data[[target_name]]
+              test_y <- inner_test_data[[target_name]]
+              
+              result <- tryCatch({
+                predictions <- knn(train = train_x, test = test_x, cl = train_y, k = grid$k[params], l = grid$l[params], prob = TRUE)
+                probabilities <- attr(predictions, "prob")
+                roc_curve <- roc(as.numeric(as.character(test_y)), probabilities)
+                auc_vals[inner_index] <- roc_curve$auc
+                
+              }, error = function(e) {
+                cat("Error with variables:", paste(temp_vars, collapse = ", "), "\n")
+                cat("Error message: ", e$message, "\n")
+                auc_vals[inner_index] <- 0  # Set to NA or some other indicator of failure
+              })
+            }
+            
+            if (mean(auc_vals, na.rm = TRUE) > best_auc_in_step) {
+              best_auc_in_step <- mean(auc_vals, na.rm = TRUE)
+              best_inner_model <- list(train_x = train_x, train_y = train_y, k = grid$k[params], l = grid$l[params])
+              best_inner_k <- grid$k[params]
+              best_inner_l <- grid$l[params]
+              best_inner_vars <- temp_vars
+              improved <- TRUE
+            }
+          }
+        }
+        
+        if (improved) {
+          current_vars <- best_inner_vars
+          best_inner_auc <- best_auc_in_step
+          cat("Vars improved: ", paste(current_vars, collapse=", "), "\n")
+          cat("AUC: ", paste(best_inner_auc), "\n")
+        }
+      }
+      
+      list(model = best_inner_model, auc = best_inner_auc, 
+           k = best_inner_k, l = best_inner_l, 
+           vars = best_inner_vars)
+      
+    }
+    
+    best_result <- stepAUC(variables, outer_train_data, target_name, grid, inner_folds)
+    best_model <- best_result$model
+    best_auc <- best_result$auc
+    best_k <- best_result$k
+    best_l <- best_result$l
+    best_vars <- best_result$vars
+
+    # Evaluar el mejor modelo en el validation split del inner loop
+    inner_auc_vals <- numeric()
+    for (inner_index in seq_along(inner_folds)) {
+      inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
+      inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
+      
+      train_x <- best_model$train_x
+      test_x <- inner_test_data[, best_vars, drop = FALSE]
+      train_y <- best_model$train_y
+      test_y <- inner_test_data[[target_name]]
+      
+      predictions <- knn(train = train_x, test = test_x, cl = train_y, k = best_k, l = best_l, prob = TRUE)
+      probabilities <- attr(predictions, "prob")
+      roc_curve <- roc(as.numeric(as.character(test_y)), probabilities)
+      inner_auc_vals[inner_index] <- roc_curve$auc
+
+      pred_class <- ifelse(probabilities > threshold, "1", "0")
+      confusion <- table(Actual = test_y, Predicted = pred_class)
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+      auc <- roc_curve$auc
+      
+      inner_metrics <- setNames(c(outer_index, inner_index, TP, TN, FP, FN, auc), names(inner_fold_metrics))
+      inner_fold_metrics <- rbind(inner_fold_metrics, as.data.frame(t(inner_metrics)))
+    }
+    
+    best_inner_auc <- mean(inner_auc_vals, na.rm = TRUE)
+    
+    test_x <- outer_test_data[, best_vars, drop = FALSE]
+    test_y <- outer_test_data[[target_name]]
+    predictions <- knn(train = best_model$train_x, test = test_x, cl = best_model$train_y, k = best_k, l = best_l, prob = TRUE)
+    probabilities <- attr(predictions, "prob")
+    pred_class <- ifelse(probabilities > threshold, "1", "0")
+    confusion <- table(Actual = test_y, Predicted = pred_class)
+    
+    if (nrow(confusion) < 2 || ncol(confusion) < 2) {
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+    } else {
+      TP <- confusion[2, 2]
+      TN <- confusion[1, 1]
+      FP <- confusion[1, 2]
+      FN <- confusion[2, 1]
+    }
+    auc <- roc(test_y, probabilities)$auc
+    
+    metrics <- setNames(c(outer_index, TP, TN, FP, FN, auc, 
+                          best_k, best_l, paste(best_vars, collapse = ",")), 
+                        names(performance_metrics))
+    performance_metrics <- rbind(performance_metrics, as.data.frame(t(metrics)))
+    
+    cat("Performance:", paste(performance_metrics))
+    cat(sprintf("Confusion Matrix for Fold %d:\n", outer_index))
+    print(confusion)
+    cat(sprintf("Metrics for Fold %d:\n", outer_index))
+    cat(sprintf("TP: %d, TN: %d, FP: %d, FN: %d, AUC: %f, Best k: %d, Best l: %f, Best Variables: %s\n",
+                TP, TN, FP, FN, auc, best_k, best_l, paste(best_vars, collapse = ",")))
+  }
+  
+  list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics)
+}
+
+evaluate_with_seeds_KNN_stepAUC <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, ks, ls) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed,
+                                   ks = ks,
+                                   ls = ls)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+  }
+
+performance_knn_stepauc <- evaluate_with_seeds_KNN_stepAUC(
+  evaluation_function = double_cross_validation_knn_stepAUC,
+  data = data_numeric,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  ks = c(10, 16, 20, 25, 30, 32),
+  ls = c(0, 1, 2),
+  vars = todas_variables_numeric,
+  threshold = .35,
+  seeds = seeds
+)
+```
+
+```{r, message=FALSE, warning=FALSE}
+load("RData_Files_Algorithms/KNN_StepAUC")
+```
+
 ### Embedded (Lasso)
+
+```{r, eval=FALSE}
+double_cross_validation_knn_lasso <- function(data, target_name, outer, inner, ks, ls, variables, threshold, seed) {
+  set.seed(seed)
+  performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
+                                    FP = integer(), FN = integer(), AUC = numeric(),
+                                    Best_k = integer(), Best_l = integer(), 
+                                    Best_Variables = character(), stringsAsFactors = FALSE)
+  
+  inner_fold_metrics <- data.frame(Fold = integer(), Inner_Fold = integer(), 
+                                   TP = integer(), TN = integer(), FP = integer(), 
+                                   FN = integer(), AUC = numeric(), stringsAsFactors = FALSE)
+  
+  # Convertir las variables del dataset con model.matrix
+  target <- as.numeric(data[[target_name]]) - 1
+  features <- data[, setdiff(names(data), target_name)]
+  data_matrix <- as.data.frame(model.matrix(~ ., data=features)[,-1])  # Eliminar el intercepto
+  data_matrix[[target_name]] <- target
+  
+  outer_folds <- createFolds(data_matrix[[target_name]], k = outer)
+  
+  for (outer_index in seq_along(outer_folds)) {
+    outer_train_data <- data_matrix[-outer_folds[[outer_index]], ]
+    outer_test_data <- data_matrix[outer_folds[[outer_index]], ]
+    
+    cat(sprintf("Outer Fold %d\n", outer_index))
+    cat("Training Data - Class 0: ", sum(outer_train_data[[target_name]] == 0), "\n")
+    cat("Training Data - Class 1: ", sum(outer_train_data[[target_name]] == 1), "\n")
+    cat("Testing Data - Class 0: ", sum(outer_test_data[[target_name]] == 0), "\n")
+    cat("Testing Data - Class 1: ", sum(outer_test_data[[target_name]] == 1), "\n")
+    
+    inner_folds <- createFolds(outer_train_data[[target_name]], k = inner)
+    best_model <- NULL
+    best_auc <- 0
+    best_k <- NULL
+    best_l <- NULL
+    best_vars <- colnames(outer_train_data)[!colnames(outer_train_data) %in% target_name]
+    
+    grid <- expand.grid(k = ks, l = ls)
+    
+    select_vars_lasso <- function(data, target_name) {
+      target <- as.numeric(data[[target_name]])
+      features <- data[, setdiff(names(data), target_name)]
+      X <- model.matrix(~ ., data=features)[,-1]  # Eliminamos el intercepto
+      y <- target
+      
+      # Ajustamos el modelo Lasso
+      lasso_model <- cv.glmnet(X, y, alpha=1)
+      lasso_coef <- coef(lasso_model, s = "lambda.min")
+      
+      # Seleccionamos las variables no nulas
+      selected_vars <- rownames(lasso_coef)[lasso_coef[, 1] != 0]
+      selected_vars <- setdiff(selected_vars, "(Intercept)")
+      #cat("Selected variables by Lasso: ", paste(selected_vars, collapse=", "), "\n")
+      return(selected_vars)
+    }
+    
+    stepAUC <- function(vars, data, target_name, grid, inner_folds) {
+      best_inner_auc <- 0
+      best_inner_model <- NULL
+      best_inner_k <- NULL
+      best_inner_l <- NULL
+      best_inner_vars <- vars
+      improved <- TRUE
+      
+      while (improved && length(vars) > 1) {
+        improved <- FALSE
+        best_auc_in_step <- best_inner_auc
+        
+        for (params in 1:nrow(grid)) {
+          auc_vals <- numeric()
+          
+          for (inner_index in seq_along(inner_folds)) {
+            inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
+            inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
+            
+            selected_vars <- select_vars_lasso(inner_train_data, target_name)
+            formula <- as.formula(paste(target_name, "~", paste(selected_vars, collapse = "+")))
+            #cat("Testing with formula: ", deparse(formula), "\n")
+            #cat("Grid parameters - k: ", grid$k[params], ", l: ", grid$l[params], "\n")
+            
+            result <- tryCatch({
+              train_x <- inner_train_data[, selected_vars, drop = FALSE]
+              test_x <- inner_test_data[, selected_vars, drop = FALSE]
+              train_y <- inner_train_data[[target_name]]
+              test_y <- inner_test_data[[target_name]]
+              
+              predictions <- knn(train_x, test_x, train_y, k = grid$k[params], l = grid$l[params], prob = TRUE)
+              prob_predictions <- attr(predictions, "prob")
+              prob_predictions <- ifelse(predictions == "1", prob_predictions, 1 - prob_predictions)
+              roc_curve <- roc(inner_test_data[[target_name]], prob_predictions)
+              auc_vals[inner_index] <- roc_curve$auc
+              #cat("AUC for inner fold ", inner_index, ": ", roc_curve$auc, "\n")
+              
+            }, error = function(e) {
+              cat("Error with variables: ", paste(selected_vars, collapse = ", "), "\n")
+              cat("Error message: ", e$message, "\n")
+              auc_vals[inner_index] <- NA  # Set to NA or some other indicator of failure
+            })
+          }
+          
+          mean_auc <- mean(auc_vals, na.rm = TRUE)
+          #cat("Mean AUC for params - k: ", grid$k[params], ", l: ", grid$l[params], ": ", mean_auc, "\n")
+          if (!is.na(mean_auc) && mean_auc > best_auc_in_step) {
+            best_auc_in_step <- mean_auc
+            best_inner_model <- list(k = grid$k[params], l = grid$l[params])
+            best_inner_k <- grid$k[params]
+            best_inner_l <- grid$l[params]
+            best_inner_vars <- selected_vars
+            improved <- TRUE
+          }
+        }
+        
+        if (improved) {
+          vars <- best_inner_vars
+          best_inner_auc <- best_auc_in_step
+          cat("Vars improved: ", paste(vars, collapse=", "), "\n")
+          cat("AUC: ", best_inner_auc, "\n")
+        }
+      }
+      
+      list(model = best_inner_model, auc = best_inner_auc, 
+           k = best_inner_k, l = best_inner_l, 
+           vars = best_inner_vars)
+    }
+    
+    best_result <- stepAUC(best_vars, outer_train_data, target_name, grid, inner_folds)
+    best_model <- best_result$model
+    best_auc <- best_result$auc
+    best_k <- best_result$k
+    best_l <- best_result$l
+    best_vars <- best_result$vars
+    
+    if (is.null(best_model)) {
+      cat("Error: No valid model found for outer fold ", outer_index, "\n")
+      next
+    }
+
+    # Evaluar el mejor modelo en el validation split del inner loop
+    inner_auc_vals <- numeric()
+    for (inner_index in seq_along(inner_folds)) {
+      inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
+      inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
+      
+      train_x <- inner_train_data[, best_vars, drop = FALSE]
+      test_x <- inner_test_data[, best_vars, drop = FALSE]
+      train_y <- inner_train_data[[target_name]]
+      test_y <- inner_test_data[[target_name]]
+      
+      predictions <- knn(train_x, test_x, train_y, k = best_k, l = best_l, prob = TRUE)
+      prob_predictions <- attr(predictions, "prob")
+      prob_predictions <- ifelse(predictions == "1", prob_predictions, 1 - prob_predictions)
+      roc_curve <- roc(inner_test_data[[target_name]], prob_predictions)
+      inner_auc_vals[inner_index] <- roc_curve$auc
+      cat("Inner fold ", inner_index, " AUC: ", roc_curve$auc, "\n")
+
+      pred_class <- ifelse(prob_predictions > threshold, 1, 0)
+      confusion <- table(Actual = inner_test_data[[target_name]], Predicted = pred_class)
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+      auc <- roc_curve$auc
+      
+      inner_metrics <- setNames(c(outer_index, inner_index, TP, TN, FP, FN, auc), names(inner_fold_metrics))
+      inner_fold_metrics <- rbind(inner_fold_metrics, as.data.frame(t(inner_metrics)))
+    }
+    
+    best_inner_auc <- mean(inner_auc_vals, na.rm = TRUE)
+    cat("Best inner AUC: ", best_inner_auc, "\n")
+    
+    train_x <- outer_train_data[, best_vars, drop = FALSE]
+    test_x <- outer_test_data[, best_vars, drop = FALSE]
+    train_y <- outer_train_data[[target_name]]
+    test_y <- outer_test_data[[target_name]]
+    
+    predictions <- knn(train_x, test_x, train_y, k = best_k, l = best_l, prob = TRUE)
+    prob_predictions <- attr(predictions, "prob")
+    prob_predictions <- ifelse(predictions == "1", prob_predictions, 1 - prob_predictions)
+    pred_class <- ifelse(prob_predictions > threshold, 1, 0)  # Asignar clases basadas en umbral
+    confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
+    
+    if (nrow(confusion) < 2 || ncol(confusion) < 2) {
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+    } else {
+      TP <- confusion[2, 2]
+      TN <- confusion[1, 1]
+      FP <- confusion[1, 2]
+      FN <- confusion[2, 1]
+    }
+    auc <- roc(outer_test_data[[target_name]], prob_predictions)$auc
+    
+    metrics <- setNames(c(outer_index, TP, TN, FP, FN, auc, 
+                          best_k, best_l, paste(best_vars, collapse = ",")), 
+                        names(performance_metrics))
+    performance_metrics <- rbind(performance_metrics, as.data.frame(t(metrics)))
+    
+    cat("Performance:\n", paste(performance_metrics), "\n")
+    cat(sprintf("Confusion Matrix for Fold %d:\n", outer_index))
+    print(confusion)
+    cat(sprintf("Metrics for Fold %d:\n", outer_index))
+    cat(sprintf("TP: %d, TN: %d, FP: %d, FN: %d, AUC: %f, Best k: %d, Best l: %d, Best Variables: %s\n",
+                TP, TN, FP, FN, auc, best_k, best_l, paste(best_vars, collapse = ",")))
+  }
+  
+  list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics)
+}
+
+evaluate_with_seeds_KNN_lasso <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, ks, ls) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed,
+                                   ks = ks,
+                                   ls = ls)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+  }
+
+performance_knn_lasso <- evaluate_with_seeds_KNN_lasso(
+  evaluation_function = double_cross_validation_knn_lasso,
+  data = data_numeric,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  ks = c(10, 16, 20, 25, 30, 32),
+  ls = c(0, 1, 2),
+  vars = todas_variables_numeric,
+  threshold = .35,
+  seeds = seeds
+)
+```
+
+```{r, message=FALSE, warning=FALSE}
+load("RData_Files_Algorithms/KNN_Lasso")
+```
 
 ## Support Vector Machines
 
+### Aparente
+
+```{r, eval=FALSE}
+evaluate_aparent_performance_model_svm <- function(data, target_var, model_func, vars = NULL, threshold = 0.5) {
+  if (is.null(vars)) {
+    vars <- setdiff(names(data), target_var)
+  }
+  
+  data[[target_var]] <- factor(data[[target_var]], levels = c(0, 1))
+  formula <- as.formula(paste(target_var, "~", paste(vars, collapse = "+")))
+  
+  model <- model_func(formula, data)
+  predictions <- predict(model, newdata = data, probability = TRUE)
+  predictions <- attr(predictions, "probabilities")[, 2]
+  
+  actual_classes <- data[[target_var]]
+  predicted_classes <- ifelse(predictions > threshold, 1, 0)
+  confusion_matrix <- table(predicted_classes, actual_classes)
+  
+  tp <- ifelse("1" %in% rownames(confusion_matrix) && "1" %in% colnames(confusion_matrix), confusion_matrix["1", "1"], 0)
+  tn <- ifelse("0" %in% rownames(confusion_matrix) && "0" %in% colnames(confusion_matrix), confusion_matrix["0", "0"], 0)
+  fp <- ifelse("1" %in% rownames(confusion_matrix) && "0" %in% colnames(confusion_matrix), confusion_matrix["1", "0"], 0)
+  fn <- ifelse("0" %in% rownames(confusion_matrix) && "1" %in% colnames(confusion_matrix), confusion_matrix["0", "1"], 0)
+  
+  accuracy <- (tp + tn) / (tp + tn + fp + fn)
+  precision <- ifelse(tp + fp > 0, tp / (tp + fp), 0)
+  recall <- ifelse(tp + fn > 0, tp / (tp + fn), 0)
+  f1_score <- ifelse(precision + recall > 0, 2 * (precision * recall) / (precision + recall), 0)
+  roc_obj <- pROC::roc(actual_classes, predictions)
+  
+  list(confusion_matrix = confusion_matrix, accuracy = accuracy, precision = precision, 
+       recall = recall, f1_score = f1_score, roc_curve = roc_obj)
+}
+
+
+svm_model <- function(formula, data) {
+  set.seed(90)
+  x <- model.matrix(formula, data)
+  y <- data[[all.vars(formula)[1]]]
+  y <- factor(y, levels = c(0, 1))
+  svm(x = x, y = y, kernel = "linear", cost = 100, probability = TRUE, maxiter=300, random_state=90)
+}
+# svm(x = x, y = y, kernel = "poly", cost = 5, gamma = .5, probability = TRUE, maxiter=150)
+# svm(x = x, y = y, kernel = "linear", cost = 50, probability = TRUE, maxiter=300, random_state=90)
+
+
+resultadosAparentesSVM <- evaluate_aparent_performance_model_svm(data = data_numeric, target_var = "PCR",
+                                                             model_func = svm_model,
+                                                             vars = ".",
+                                                             threshold = .35)
+```
+
+```{r, message=FALSE, warning=FALSE}
+load("RData_Files_Algorithms/SVM_Aparente")
+```
+
 ### Todas las Variables
+
+```{r, eval=FALSE}
+double_cross_validation_svm <- function(data, target_name, outer, inner, kernels, costs, variables, threshold, seed) {
+  set.seed(seed)
+  performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
+                                    FP = integer(), FN = integer(), AUC = numeric(),
+                                    Best_Kernel = character(), Best_Cost = numeric(), stringsAsFactors = FALSE)
+
+  data[[target_name]] <- as.factor(data[[target_name]])
+  outer_folds <- createFolds(data[[target_name]], k = outer, list = TRUE, returnTrain = FALSE)
+  
+  for (outer_index in seq_along(outer_folds)) {
+    outer_train_data <- data[-outer_folds[[outer_index]], ]
+    outer_test_data <- data[outer_folds[[outer_index]], ]
+
+    cat(sprintf("Outer Fold %d\n", outer_index))
+    cat("Training Data - Class 0: ", sum(outer_train_data[[target_name]] == "0"), "\n")
+    cat("Training Data - Class 1: ", sum(outer_train_data[[target_name]] == "1"), "\n")
+    cat("Testing Data - Class 0: ", sum(outer_test_data[[target_name]] == "0"), "\n")
+    cat("Testing Data - Class 1: ", sum(outer_test_data[[target_name]] == "1"), "\n")
+    
+    if (sum(outer_train_data[[target_name]] == "0") == 0 || sum(outer_train_data[[target_name]] == "1") == 0) {
+      cat("Skipping outer fold due to lack of class diversity\n")
+      next
+    }
+
+    inner_folds <- createFolds(outer_train_data[[target_name]], k = inner, list = TRUE, returnTrain = FALSE)
+    best_model <- NULL
+    best_auc <- 0
+    best_kernel <- NULL
+    best_cost <- NULL
+
+    grid <- expand.grid(kernel = kernels, cost = costs)
+
+    for (params in 1:nrow(grid)) {
+      inner_auc <- numeric()
+
+      for (inner_index in seq_along(inner_folds)) {
+        inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
+        inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
+
+        if (sum(inner_train_data[[target_name]] == "0") == 0 || sum(inner_train_data[[target_name]] == "1") == 0) {
+          cat("Skipping inner fold due to lack of class diversity\n")
+          next
+        }
+
+        result <- tryCatch({
+          model <- svm(reformulate(variables, target_name), 
+                       data = inner_train_data, kernel = grid$kernel[params], cost = grid$cost[params], 
+                       probability = TRUE)
+
+          pred <- predict(model, inner_test_data, probability = TRUE)
+          prob <- attr(pred, "probabilities")[, 2]
+          roc_curve <- pROC::roc(inner_test_data[[target_name]], prob)
+          inner_auc[inner_index] <- roc_curve$auc
+        }, error = function(e) {
+          cat("Error with parameters: kernel =", grid$kernel[params], ", cost =", grid$cost[params], "\n")
+          cat("Error message: ", e$message, "\n")
+          inner_auc[inner_index] <- 0
+        })
+      }
+
+      if (mean(inner_auc, na.rm = TRUE) > best_auc) {
+        best_auc <- mean(inner_auc, na.rm = TRUE)
+        best_model <- model
+        best_kernel <- grid$kernel[params]
+        best_cost <- grid$cost[params]
+      }
+    }
+
+    predictions <- predict(best_model, outer_test_data, probability = TRUE)
+    prob <- attr(predictions, "probabilities")[, 2]
+    pred_class <- ifelse(prob > threshold, 1, 0)  # Asignar clases basadas en umbral
+    confusion <- table(outer_test_data[[target_name]], pred_class)
+    
+    if (nrow(confusion) < 2 || ncol(confusion) < 2) {
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+    } else {
+      TP <- confusion[2, 2]
+      TN <- confusion[1, 1]
+      FP <- confusion[1, 2]
+      FN <- confusion[2, 1]
+    }
+    auc <- pROC::roc(outer_test_data[[target_name]], prob)$auc
+
+    # Crear un vector con los nombres correctos y convertir a dataframe
+    metrics <- setNames(c(outer_index, TP, TN, FP, FN, auc, best_kernel, best_cost), names(performance_metrics))
+    performance_metrics <- rbind(performance_metrics, as.data.frame(t(metrics)))
+  }
+  
+  return(performance_metrics)
+}
+
+evaluate_with_seeds_SVM_TodasVariables_Asociacion <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, kernels, costs) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed,
+                                   kernels = kernels,
+                                   costs = costs)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+  }
+
+performance_SVM_todasvariables <- evaluate_with_seeds_SVM_TodasVariables_Asociacion(
+  evaluation_function = double_cross_validation_svm,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  kernels = c("linear", "poly"),
+  costs = c(50, 100, 200),
+  vars = todas_variables_factor,
+  threshold = .35,
+  seeds = seeds
+)
+```
+
+```{r, message=FALSE, warning=FALSE}
+load("RData_Files_Algorithms/SVM_TodasVariables")
+```
 
 ### Filtrado (Asociación)
 
+```{r, eval=FALSE}
+performance_svm_asociacion <- evaluate_with_seeds_SVM_TodasVariables_Asociacion(
+  evaluation_function = double_cross_validation_svm,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  kernels = c("linear", "poly"),
+  costs = c(50, 100, 200),
+  vars = asociacion,
+  threshold = .35,
+  seeds = seeds
+)
+```
+
+```{r, message=FALSE, warning=FALSE}
+load("RData_Files_Algorithms/SVM_Asociacion")
+```
+
 ### Wrapped (StepAUC)
 
+```{r, eval=FALSE}
+double_cross_validation_svm_stepAUC <- function(data, target_name, outer, inner, kernels, costs, variables, threshold, seed) {
+  set.seed(seed)
+  performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
+                                    FP = integer(), FN = integer(), AUC = numeric(),
+                                    Best_Kernel = character(), Best_Cost = numeric(), Best_Variables = character(), stringsAsFactors = FALSE)
+  
+  inner_fold_metrics <- data.frame(Fold = integer(), Inner_Fold = integer(), 
+                                   TP = integer(), TN = integer(), FP = integer(), 
+                                   FN = integer(), AUC = numeric(), stringsAsFactors = FALSE)
+  
+  data[[target_name]] <- as.factor(data[[target_name]])
+  outer_folds <- createFolds(data[[target_name]], k = outer, list = TRUE, returnTrain = FALSE)
+  
+  for (outer_index in seq_along(outer_folds)) {
+    outer_train_data <- data[-outer_folds[[outer_index]], ]
+    outer_test_data <- data[outer_folds[[outer_index]], ]
+    
+    cat(sprintf("Outer Fold %d\n", outer_index))
+    cat("Training Data - Class 0: ", sum(outer_train_data[[target_name]] == 0), "\n")
+    cat("Training Data - Class 1: ", sum(outer_train_data[[target_name]] == 1), "\n")
+    cat("Training Data - Total: ", nrow(outer_train_data), "\n")
+    cat("Testing Data - Class 0: ", sum(outer_test_data[[target_name]] == 0), "\n")
+    cat("Testing Data - Class 1: ", sum(outer_test_data[[target_name]] == 1), "\n")
+    cat("Testing Data - Total: ", nrow(outer_test_data), "\n")
+    
+    inner_folds <- createFolds(outer_train_data[[target_name]], k = inner, list = TRUE, returnTrain = FALSE)
+    best_model <- NULL
+    best_auc <- 0
+    best_kernel <- NULL
+    best_cost <- NULL
+    best_vars <- variables
+    
+    grid <- expand.grid(kernel = kernels, cost = costs)
+    
+    stepAUC <- function(vars, outer_train_data, target_name, grid, inner_folds) {
+      current_vars <- vars
+      best_inner_auc <- 0
+      best_inner_model <- NULL
+      best_inner_kernel <- NULL
+      best_inner_cost <- NULL
+      best_inner_vars <- current_vars
+      improved <- TRUE
+      
+      while (improved && length(current_vars) > 1) {
+        improved <- FALSE
+        best_auc_in_step <- best_inner_auc
+        
+        for (var in current_vars) {
+          temp_vars <- setdiff(current_vars, var)
+          inner_auc <- numeric()
+          
+          for (params in 1:nrow(grid)) {
+            auc_vals <- numeric()
+            
+            for (inner_index in seq_along(inner_folds)) {
+              inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
+              inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
+              
+              result <- tryCatch({
+                model <- svm(as.formula(paste(target_name, "~", paste(temp_vars, collapse = "+"))),
+                             data = inner_train_data, kernel = grid$kernel[params], cost = grid$cost[params], 
+                             probability = TRUE)
+                
+                predictions <- predict(model, newdata = inner_test_data, probability = TRUE)
+                predictions <- attr(predictions, "probabilities")[, 2]
+                roc_curve <- roc(inner_test_data[[target_name]], predictions)
+                auc_vals[inner_index] <- roc_curve$auc
+                
+              }, error = function(e) {
+                cat("Error with variables:", paste(temp_vars, collapse = ", "), "\n")
+                cat("Error message: ", e$message, "\n")
+                auc_vals[inner_index] <- 0  # Set to NA or some other indicator of failure
+              })
+            }
+            
+            if (mean(auc_vals, na.rm = TRUE) > best_auc_in_step) {
+              best_auc_in_step <- mean(auc_vals, na.rm = TRUE)
+              best_inner_model <- model
+              best_inner_kernel <- grid$kernel[params]
+              best_inner_cost <- grid$cost[params]
+              best_inner_vars <- temp_vars
+              improved <- TRUE
+            }
+          }
+        }
+        
+        if (improved) {
+          current_vars <- best_inner_vars
+          best_inner_auc <- best_auc_in_step
+          cat("Vars improved: ", paste(current_vars, collapse=", "), "\n")
+          cat("AUC: ", paste(best_inner_auc), "\n")
+        }
+      }
+      
+      list(model = best_inner_model, auc = best_inner_auc, 
+           kernel = best_inner_kernel, cost = best_inner_cost, 
+           vars = best_inner_vars)
+      
+    }
+    
+    best_result <- stepAUC(variables, outer_train_data, target_name, grid, inner_folds)
+    best_model <- best_result$model
+    best_auc <- best_result$auc
+    best_kernel <- best_result$kernel
+    best_cost <- best_result$cost
+    best_vars <- best_result$vars
+
+    # Evaluar el mejor modelo en el validation split del inner loop
+    inner_auc_vals <- numeric()
+    for (inner_index in seq_along(inner_folds)) {
+      inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
+      inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
+      
+      predictions <- predict(best_model, newdata = inner_test_data, probability = TRUE)
+      predictions <- attr(predictions, "probabilities")[, 2]
+      roc_curve <- roc(inner_test_data[[target_name]], predictions)
+      inner_auc_vals[inner_index] <- roc_curve$auc
+
+      pred_class <- ifelse(predictions > threshold, 1, 0)
+      confusion <- table(Actual = inner_test_data[[target_name]], Predicted = pred_class)
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+      auc <- roc_curve$auc
+      
+      inner_metrics <- setNames(c(outer_index, inner_index, TP, TN, FP, FN, auc), names(inner_fold_metrics))
+      inner_fold_metrics <- rbind(inner_fold_metrics, as.data.frame(t(inner_metrics)))
+    }
+    
+    best_inner_auc <- mean(inner_auc_vals, na.rm = TRUE)
+    
+    predictions <- predict(best_model, newdata = outer_test_data, probability = TRUE)
+    predictions <- attr(predictions, "probabilities")[, 2]
+    pred_class <- ifelse(predictions > threshold, 1, 0)  # Asignar clases basadas en umbral
+    confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
+    
+    if (nrow(confusion) < 2 || ncol(confusion) < 2) {
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+    } else {
+      TP <- confusion[2, 2]
+      TN <- confusion[1, 1]
+      FP <- confusion[1, 2]
+      FN <- confusion[2, 1]
+    }
+    auc <- roc(outer_test_data[[target_name]], predictions)$auc
+    
+    metrics <- setNames(c(outer_index, TP, TN, FP, FN, auc, 
+                          best_kernel, best_cost, paste(best_vars, collapse = ",")), 
+                        names(performance_metrics))
+    performance_metrics <- rbind(performance_metrics, as.data.frame(t(metrics)))
+    
+    cat("Performance:", paste(performance_metrics))
+    cat(sprintf("Confusion Matrix for Fold %d:\n", outer_index))
+    print(confusion)
+    cat(sprintf("Metrics for Fold %d:\n", outer_index))
+    cat(sprintf("TP: %d, TN: %d, FP: %d, FN: %d, AUC: %f, Best Kernel: %s, Best Cost: %f, Best Variables: %s\n",
+                TP, TN, FP, FN, auc, best_kernel, best_cost, paste(best_vars, collapse = ",")))
+  }
+  
+  list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics)
+}
+evaluate_with_seeds_SVM_stepAUC <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, kernels, costs) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed,
+                                   kernels = kernels,
+                                   costs = costs)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+  }
+
+performance_SVM_stepauc <- evaluate_with_seeds_SVM_stepAUC(
+  evaluation_function = double_cross_validation_svm_stepAUC,
+  data = data_numeric,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  kernels = c("linear", "poly"),
+  costs = c(50, 100, 200),
+  vars = todas_variables_numeric,
+  threshold = .35,
+  seeds = seeds
+)
+```
+
+```{r, message=FALSE, warning=FALSE}
+load("RData_Files_Algorithms/SVM_StepAUC")
+```
+
 ### Embedded (Lasso)
+
+```{r, eval=FALSE}
+double_cross_validation_svm_lasso <- function(data, target_name, outer, inner, kernels, costs, variables, threshold, seed) {
+  set.seed(seed)
+  performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
+                                    FP = integer(), FN = integer(), AUC = numeric(),
+                                    Best_Kernel = character(), Best_Cost = numeric(),
+                                    Best_Variables = character(), stringsAsFactors = FALSE)
+  
+  inner_fold_metrics <- data.frame(Fold = integer(), Inner_Fold = integer(), 
+                                   TP = integer(), TN = integer(), FP = integer(), 
+                                   FN = integer(), AUC = numeric(), stringsAsFactors = FALSE)
+  
+  # Convertir las variables del dataset con model.matrix
+  target <- as.factor(data[[target_name]])  # Aseguramos que la variable de respuesta sea factor
+  features <- data[, setdiff(names(data), target_name)]
+  data_matrix <- as.data.frame(model.matrix(~ ., data=features)[,-1])  # Eliminar el intercepto
+  data_matrix[[target_name]] <- target
+  
+  outer_folds <- createFolds(data_matrix[[target_name]], k = outer)
+  
+  for (outer_index in seq_along(outer_folds)) {
+    outer_train_data <- data_matrix[-outer_folds[[outer_index]], ]
+    outer_test_data <- data_matrix[outer_folds[[outer_index]], ]
+    
+    cat(sprintf("Outer Fold %d\n", outer_index))
+    cat("Training Data - Class 0: ", sum(outer_train_data[[target_name]] == 0), "\n")
+    cat("Training Data - Class 1: ", sum(outer_train_data[[target_name]] == 1), "\n")
+    cat("Testing Data - Class 0: ", sum(outer_test_data[[target_name]] == 0), "\n")
+    cat("Testing Data - Class 1: ", sum(outer_test_data[[target_name]] == 1), "\n")
+    
+    inner_folds <- createFolds(outer_train_data[[target_name]], k = inner)
+    best_model <- NULL
+    best_auc <- 0
+    best_kernel <- NULL
+    best_cost <- NULL
+    best_vars <- colnames(outer_train_data)[!colnames(outer_train_data) %in% target_name]
+    
+    grid <- expand.grid(kernel = kernels, cost = costs)
+    
+    select_vars_lasso <- function(data, target_name) {
+      target <- as.numeric(data[[target_name]]) - 1  # Convertimos a numérico para Lasso
+      features <- data[, setdiff(names(data), target_name)]
+      X <- model.matrix(~ ., data=features)[,-1]  # Eliminamos el intercepto
+      y <- target
+      
+      # Ajustamos el modelo Lasso
+      lasso_model <- cv.glmnet(X, y, alpha=1)
+      lasso_coef <- coef(lasso_model, s = "lambda.min")
+      
+      # Seleccionamos las variables no nulas
+      selected_vars <- rownames(lasso_coef)[lasso_coef[, 1] != 0]
+      selected_vars <- setdiff(selected_vars, "(Intercept)")
+      cat("Selected variables by Lasso: ", paste(selected_vars, collapse=", "), "\n")
+      return(selected_vars)
+    }
+    
+    stepAUC <- function(vars, data, target_name, grid, inner_folds) {
+      best_inner_auc <- 0
+      best_inner_model <- NULL
+      best_inner_kernel <- NULL
+      best_inner_cost <- NULL
+      best_inner_vars <- vars
+      improved <- TRUE
+      
+      while (improved && length(vars) > 1) {
+        improved <- FALSE
+        best_auc_in_step <- best_inner_auc
+        
+        for (params in 1:nrow(grid)) {
+          auc_vals <- numeric()
+          
+          for (inner_index in seq_along(inner_folds)) {
+            inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
+            inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
+            
+            selected_vars <- select_vars_lasso(inner_train_data, target_name)
+            formula <- as.formula(paste(target_name, "~", paste(selected_vars, collapse = "+")))
+            cat("Testing with formula: ", deparse(formula), "\n")
+            cat("Grid parameters - kernel: ", grid$kernel[params], ", cost: ", grid$cost[params], "\n")
+            
+            result <- tryCatch({
+              model <- svm(formula, data = inner_train_data, kernel = grid$kernel[params], cost = grid$cost[params], probability = TRUE)
+              
+              predictions <- predict(model, inner_test_data, probability = TRUE)
+              predictions_prob <- attr(predictions, "probabilities")[, 2]
+              roc_curve <- roc(inner_test_data[[target_name]], predictions_prob)
+              auc_vals[inner_index] <- roc_curve$auc
+              cat("AUC for inner fold ", inner_index, ": ", roc_curve$auc, "\n")
+              
+            }, error = function(e) {
+              cat("Error with variables: ", paste(selected_vars, collapse = ", "), "\n")
+              cat("Error message: ", e$message, "\n")
+              auc_vals[inner_index] <- NA  # Set to NA or some other indicator of failure
+            })
+          }
+          
+          mean_auc <- mean(auc_vals, na.rm = TRUE)
+          cat("Mean AUC for params - kernel: ", grid$kernel[params], ", cost: ", grid$cost[params], ": ", mean_auc, "\n")
+          if (!is.na(mean_auc) && mean_auc > best_auc_in_step) {
+            best_auc_in_step <- mean_auc
+            best_inner_model <- model
+            best_inner_kernel <- grid$kernel[params]
+            best_inner_cost <- grid$cost[params]
+            best_inner_vars <- selected_vars
+            improved <- TRUE
+          }
+        }
+        
+        if (improved) {
+          vars <- best_inner_vars
+          best_inner_auc <- best_auc_in_step
+          cat("Vars improved: ", paste(vars, collapse=", "), "\n")
+          cat("AUC: ", best_inner_auc, "\n")
+        }
+      }
+      
+      list(model = best_inner_model, auc = best_inner_auc, 
+           kernel = best_inner_kernel, cost = best_inner_cost, 
+           vars = best_inner_vars)
+    }
+    
+    best_result <- stepAUC(best_vars, outer_train_data, target_name, grid, inner_folds)
+    best_model <- best_result$model
+    best_auc <- best_result$auc
+    best_kernel <- best_result$kernel
+    best_cost <- best_result$cost
+    best_vars <- best_result$vars
+    
+    if (is.null(best_model)) {
+      cat("Error: No valid model found for outer fold ", outer_index, "\n")
+      next
+    }
+
+    # Evaluar el mejor modelo en el validation split del inner loop
+    inner_auc_vals <- numeric()
+    for (inner_index in seq_along(inner_folds)) {
+      inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
+      inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
+      
+      predictions <- predict(best_model, inner_test_data, probability = TRUE)
+      predictions_prob <- attr(predictions, "probabilities")[, 2]
+      roc_curve <- roc(inner_test_data[[target_name]], predictions_prob)
+      inner_auc_vals[inner_index] <- roc_curve$auc
+      cat("Inner fold ", inner_index, " AUC: ", roc_curve$auc, "\n")
+
+      pred_class <- ifelse(predictions_prob > threshold, "1", "0")
+      confusion <- table(Actual = inner_test_data[[target_name]], Predicted = pred_class)
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+      auc <- roc_curve$auc
+      
+      inner_metrics <- setNames(c(outer_index, inner_index, TP, TN, FP, FN, auc), names(inner_fold_metrics))
+      inner_fold_metrics <- rbind(inner_fold_metrics, as.data.frame(t(inner_metrics)))
+    }
+    
+    best_inner_auc <- mean(inner_auc_vals, na.rm = TRUE)
+    cat("Best inner AUC: ", best_inner_auc, "\n")
+    
+    predictions <- predict(best_model, outer_test_data, probability = TRUE)
+    predictions_prob <- attr(predictions, "probabilities")[, 2]
+    pred_class <- ifelse(predictions_prob > threshold, "1", "0")  # Asignar clases basadas en umbral
+    confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
+    
+    if (nrow(confusion) < 2 || ncol(confusion) < 2) {
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+    } else {
+      TP <- confusion[2, 2]
+      TN <- confusion[1, 1]
+      FP <- confusion[1, 2]
+      FN <- confusion[2, 1]
+    }
+    auc <- roc(outer_test_data[[target_name]], predictions_prob)$auc
+    
+    metrics <- setNames(c(outer_index, TP, TN, FP, FN, auc, 
+                          best_kernel, best_cost, paste(best_vars, collapse = ",")), 
+                        names(performance_metrics))
+    performance_metrics <- rbind(performance_metrics, as.data.frame(t(metrics)))
+    
+    cat("Performance:\n", paste(performance_metrics), "\n")
+    cat(sprintf("Confusion Matrix for Fold %d:\n", outer_index))
+    print(confusion)
+    cat(sprintf("Metrics for Fold %d:\n", outer_index))
+    cat(sprintf("TP: %d, TN: %d, FP: %d, FN: %d, AUC: %f, Best Kernel: %s, Best Cost: %f, Best Variables: %s\n",
+                TP, TN, FP, FN, auc, best_kernel, best_cost, paste(best_vars, collapse = ",")))
+  }
+  
+  list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics)
+}
+
+evaluate_with_seeds_SVM_lasso <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, kernels, costs) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed,
+                                   kernels = kernels,
+                                   costs = costs)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+  }
+
+performance_SVM_lasso <- evaluate_with_seeds_SVM_lasso(
+  evaluation_function = double_cross_validation_svm_lasso,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  kernels = c("linear", "poly"),
+  costs = c(50, 100, 200),
+  vars = todas_variables_factor,
+  threshold = .35,
+  seeds = seeds
+)
+```
+
+```{r, message=FALSE, warning=FALSE}
+load("RData_Files_Algorithms/SVM_Lasso")
+```
 
 ## Artificial Neural Networks
 
+### Aparente
+
+```{r, eval=FALSE}
+evaluate_aparent_performance_model_nnet <- function(data, target_var, model_func, vars = NULL, threshold = 0.5) {
+  if (is.null(vars)) {
+    vars <- setdiff(names(data), target_var)
+  }
+  
+  data[[target_var]] <- factor(data[[target_var]], levels = c(0, 1))
+  formula <- as.formula(paste(target_var, "~", paste(vars, collapse = "+")))
+  
+  model <- model_func(formula, data)
+  predictions <- predict(model, newdata = data, type = "raw")
+  
+  actual_classes <- data[[target_var]]
+  predicted_classes <- ifelse(predictions > threshold, 1, 0)
+  confusion_matrix <- table(predicted_classes, actual_classes)
+  
+  tp <- ifelse("1" %in% rownames(confusion_matrix) && "1" %in% colnames(confusion_matrix), confusion_matrix["1", "1"], 0)
+  tn <- ifelse("0" %in% rownames(confusion_matrix) && "0" %in% colnames(confusion_matrix), confusion_matrix["0", "0"], 0)
+  fp <- ifelse("1" %in% rownames(confusion_matrix) && "0" %in% colnames(confusion_matrix), confusion_matrix["1", "0"], 0)
+  fn <- ifelse("0" %in% rownames(confusion_matrix) && "1" %in% colnames(confusion_matrix), confusion_matrix["0", "1"], 0)
+  
+  accuracy <- (tp + tn) / (tp + tn + fp + fn)
+  precision <- ifelse(tp + fp > 0, tp / (tp + fp), 0)
+  recall <- ifelse(tp + fn > 0, tp / (tp + fn), 0)
+  f1_score <- ifelse(precision + recall > 0, 2 * (precision * recall) / (precision + recall), 0)
+  roc_obj <- pROC::roc(actual_classes, predictions)
+  
+  list(confusion_matrix = confusion_matrix, accuracy = accuracy, precision = precision, 
+       recall = recall, f1_score = f1_score, roc_curve = roc_obj)
+}
+
+
+nn_model <- function(formula, data) {
+  set.seed(90)
+  nnet(formula = formula, data = data, size = 15, 
+       decay = 0.1, maxit = 100, trace = FALSE, 
+       linout = FALSE, random_state = 90)
+}
+
+
+resultadosAparentesNN <- evaluate_aparent_performance_model_nnet(data = data_factor, target_var = "PCR",
+                                                             model_func = nn_model,
+                                                             vars = ".",
+                                                             threshold = .35)
+```
+
+```{r, message=FALSE, warning=FALSE}
+load("RData_Files_Algorithms/ANN_Aparente")
+```
+
 ### Todas las Variables
+
+```{r, eval=FALSE}
+double_cross_validation_nnet <- function(data, target_name, outer, inner, sizes, decays, variables, threshold, seed) {
+  set.seed(seed)
+  performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
+                                    FP = integer(), FN = integer(), AUC = numeric(),
+                                    Best_Size = integer(), Best_Decay = numeric(), stringsAsFactors = FALSE)
+  data[[target_name]] <- as.numeric(data[[target_name]]) - 1
+  outer_folds <- createFolds(data[[target_name]], k = outer, list = TRUE, returnTrain = FALSE)
+
+  for (outer_index in seq_along(outer_folds)) {
+    outer_train_data <- data[-outer_folds[[outer_index]], ]
+    outer_test_data <- data[outer_folds[[outer_index]], ]
+
+    cat(sprintf("Outer Fold %d\n", outer_index))
+    cat("Training Data - Class 0: ", sum(outer_train_data[[target_name]] == 0), "\n")
+    cat("Training Data - Class 1: ", sum(outer_train_data[[target_name]] == 1), "\n")
+    cat("Training Data - Total: ", nrow(outer_train_data), "\n")
+    cat("Testing Data - Class 0: ", sum(outer_test_data[[target_name]] == 0), "\n")
+    cat("Testing Data - Class 1: ", sum(outer_test_data[[target_name]] == 1), "\n")
+    cat("Testing Data - Total: ", nrow(outer_test_data), "\n")
+    
+    if (sum(outer_train_data[[target_name]] == 0) == 0 || sum(outer_train_data[[target_name]] == 1) == 0) {
+      cat("Skipping outer fold due to lack of class diversity\n")
+      next
+    }
+
+    inner_folds <- createFolds(outer_train_data[[target_name]], k = inner, list = TRUE, returnTrain = FALSE)
+    best_model <- NULL
+    best_auc <- 0
+    best_size <- NULL
+    best_decay <- NULL
+
+    grid <- expand.grid(size = sizes, decay = decays)
+    formula <- reformulate(variables, target_name)
+
+    for (params in 1:nrow(grid)) {
+      inner_auc <- numeric()
+
+      for (inner_index in seq_along(inner_folds)) {
+        inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
+        inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
+
+        if (sum(inner_train_data[[target_name]] == 0) == 0 || sum(inner_train_data[[target_name]] == 1) == 0) {
+          cat("Skipping inner fold due to lack of class diversity\n")
+          next
+        }
+
+        result <- tryCatch({
+          model <- nnet(formula, data = inner_train_data, size = grid$size[params], decay = grid$decay[params], linout = FALSE, maxit = 200)
+
+          predictions <- predict(model, inner_test_data, type = "raw")
+          roc_curve <- pROC::roc(inner_test_data[[target_name]], predictions)
+          inner_auc[inner_index] <- roc_curve$auc
+        }, error = function(e) {
+          cat("Error with parameters: size =", grid$size[params], ", decay =", grid$decay[params], "\n")
+          cat("Error message: ", e$message, "\n")
+          inner_auc[inner_index] <- 0
+        })
+      }
+
+      if (mean(inner_auc, na.rm = TRUE) > best_auc) {
+        best_auc <- mean(inner_auc, na.rm = TRUE)
+        best_model <- model
+        best_size <- grid$size[params]
+        best_decay <- grid$decay[params]
+      }
+    }
+
+    predictions <- predict(best_model, outer_test_data, type = "raw")
+    pred_class <- ifelse(predictions > threshold, 1, 0)  # Asignar clases basadas en umbral
+    confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
+
+    if (nrow(confusion) < 2 || ncol(confusion) < 2) {
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+    } else {
+      TP <- confusion[2, 2]
+      TN <- confusion[1, 1]
+      FP <- confusion[1, 2]
+      FN <- confusion[2, 1]
+    }
+    auc <- pROC::roc(outer_test_data[[target_name]], predictions)$auc
+
+    metrics <- setNames(c(outer_index, TP, TN, FP, FN, auc, best_size, best_decay), names(performance_metrics))
+    performance_metrics <- rbind(performance_metrics, as.data.frame(t(metrics)))
+  }
+
+  return(performance_metrics)
+}
+
+evaluate_with_seeds_ANN_TodasVariables_Asociacion <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, sizes, decays) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed,
+                                   sizes = sizes,
+                                   decays = decays)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+  }
+
+performance_ANN_todasvariables <- evaluate_with_seeds_ANN_TodasVariables_Asociacion(
+  evaluation_function = double_cross_validation_nnet,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  sizes = c(5,10,15,20),
+  decays = c(0.1, 0.2, 0.3),
+  vars = todas_variables_factor,
+  threshold = .35,
+  seeds = seeds
+)
+
+```
+
+```{r, message=FALSE, warning=FALSE}
+load("RData_Files_Algorithms/ANN_TodasVariables")
+```
 
 ### Filtrado (Asociación)
 
+```{r, eval=FALSE}
+performance_ANN_asociacion <- evaluate_with_seeds_ANN_TodasVariables_Asociacion(
+  evaluation_function = double_cross_validation_nnet,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  sizes = c(5,10,15,20),
+  decays = c(0.1, 0.2, 0.3),
+  vars = asociacion,
+  threshold = .35,
+  seeds = seeds
+)
+```
+
+```{r, message=FALSE, warning=FALSE}
+load("RData_Files_Algorithms/ANN_Asociacion")
+```
+
 ### Wrapped (StepAUC)
+
+```{r, eval=FALSE}
+double_cross_validation_nnet_stepAUC <- function(data, target_name, outer, inner, sizes, decays, variables, threshold, seed) {
+  set.seed(seed)
+  performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
+                                    FP = integer(), FN = integer(), AUC = numeric(),
+                                    Best_Size = integer(), Best_Decay = numeric(), Best_Variables = character(), stringsAsFactors = FALSE)
+  
+  inner_fold_metrics <- data.frame(Fold = integer(), Inner_Fold = integer(), 
+                                   TP = integer(), TN = integer(), FP = integer(), 
+                                   FN = integer(), AUC = numeric(), stringsAsFactors = FALSE)
+  
+  data[[target_name]] <- as.numeric(data[[target_name]]) - 1
+  outer_folds <- createFolds(data[[target_name]], k = outer)
+  
+  for (outer_index in seq_along(outer_folds)) {
+    outer_train_data <- data[-outer_folds[[outer_index]], ]
+    outer_test_data <- data[outer_folds[[outer_index]], ]
+    
+    cat(sprintf("Outer Fold %d\n", outer_index))
+    cat("Training Data - Class 0: ", sum(outer_train_data[[target_name]] == 0), "\n")
+    cat("Training Data - Class 1: ", sum(outer_train_data[[target_name]] == 1), "\n")
+    cat("Testing Data - Class 0: ", sum(outer_test_data[[target_name]] == 0), "\n")
+    cat("Testing Data - Class 1: ", sum(outer_test_data[[target_name]] == 1), "\n")
+    
+    inner_folds <- createFolds(outer_train_data[[target_name]], k = inner)
+    best_model <- NULL
+    best_auc <- 0
+    best_size <- NULL
+    best_decay <- NULL
+    best_vars <- variables
+    
+    grid <- expand.grid(size = sizes, decay = decays)
+    
+    stepAUC <- function(vars, data, target_name, grid, inner_folds) {
+      current_vars <- vars
+      best_inner_auc <- 0
+      best_inner_model <- NULL
+      best_inner_size <- NULL
+      best_inner_decay <- NULL
+      best_inner_vars <- current_vars
+      improved <- TRUE
+      
+      while (improved && length(current_vars) > 1) {
+        improved <- FALSE
+        best_auc_in_step <- best_inner_auc
+        
+        for (var in current_vars) {
+          temp_vars <- setdiff(current_vars, var)
+          inner_auc <- numeric()
+          
+          for (params in 1:nrow(grid)) {
+            auc_vals <- numeric()
+            
+            for (inner_index in seq_along(inner_folds)) {
+              inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
+              inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
+              
+              result <- tryCatch({
+                model <- nnet(as.formula(paste(target_name, "~", paste(temp_vars, collapse = "+"))),
+                              data = inner_train_data, size = grid$size[params], decay = grid$decay[params], 
+                              linout = FALSE, maxit = 200, trace = FALSE)
+                
+                predictions <- predict(model, inner_test_data, type = "raw")
+                roc_curve <- roc(inner_test_data[[target_name]], predictions)
+                auc_vals[inner_index] <- roc_curve$auc
+                
+                # Guardar los datos del inner fold
+                pred_class <- ifelse(predictions > threshold, 1, 0)
+                confusion <- table(Actual = inner_test_data[[target_name]], Predicted = pred_class)
+                TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+                TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+                FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+                FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+                auc <- roc_curve$auc
+                inner_metrics <- setNames(c(outer_index, inner_index, TP, TN, FP, FN, auc), names(inner_fold_metrics))
+                inner_fold_metrics <<- rbind(inner_fold_metrics, as.data.frame(t(inner_metrics)))
+              }, error = function(e) {
+                cat("Error with variables:", paste(temp_vars, collapse = ", "), "\n")
+                auc_vals[inner_index] <- 0  # Set to NA or some other indicator of failure
+              })
+            }
+            
+            if (mean(auc_vals, na.rm = TRUE) > best_auc_in_step) {
+              best_auc_in_step <- mean(auc_vals, na.rm = TRUE)
+              best_inner_model <- model
+              best_inner_size <- grid$size[params]
+              best_inner_decay <- grid$decay[params]
+              best_inner_vars <- temp_vars
+              improved <- TRUE
+            }
+          }
+        }
+        
+        if (improved) {
+          current_vars <- best_inner_vars
+          best_inner_auc <- best_auc_in_step
+          cat("Vars improved: ", paste(current_vars, collapse=", "), "\n")
+          cat("AUC: ", paste(best_inner_auc), "\n")
+        }
+      }
+      
+      list(model = best_inner_model, auc = best_inner_auc, 
+           size = best_inner_size, decay = best_inner_decay, 
+           vars = best_inner_vars)
+    }
+    
+    best_result <- stepAUC(variables, outer_train_data, target_name, grid, inner_folds)
+    best_model <- best_result$model
+    best_auc <- best_result$auc
+    best_size <- best_result$size
+    best_decay <- best_result$decay
+    best_vars <- best_result$vars
+    
+    predictions <- predict(best_model, outer_test_data, type = "raw")
+    pred_class <- ifelse(predictions > threshold, 1, 0)  # Asignar clases basadas en umbral
+    confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
+    
+    if (nrow(confusion) < 2 || ncol(confusion) < 2) {
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+    } else {
+      TP <- confusion[2, 2]
+      TN <- confusion[1, 1]
+      FP <- confusion[1, 2]
+      FN <- confusion[2, 1]
+    }
+    auc = roc(outer_test_data[[target_name]], predictions)$auc
+    
+    metrics <- setNames(c(outer_index, TP, TN, FP, FN, auc, 
+                          best_size, best_decay, paste(best_vars, collapse = ",")), 
+                        names(performance_metrics))
+    performance_metrics <- rbind(performance_metrics, as.data.frame(t(metrics)))
+    
+    cat("Performance:", paste(performance_metrics))
+    cat(sprintf("Confusion Matrix for Fold %d:\n", outer_index))
+    print(confusion)
+    cat(sprintf("Metrics for Fold %d:\n", outer_index))
+    cat(sprintf("TP: %d, TN: %d, FP: %d, FN: %d, AUC: %f, Best Size: %d, Best Decay: %f, Best Variables: %s\n",
+                TP, TN, FP, FN, auc, best_size, best_decay, paste(best_vars, collapse = ",")))
+  }
+  
+  list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics)
+}
+
+evaluate_with_seeds_ANN_StepAUC <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, sizes, decays) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed,
+                                   sizes = sizes,
+                                   decays = decays)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+  }
+
+performance_ANN_stepAUC <- evaluate_with_seeds_ANN_StepAUC(
+  evaluation_function = double_cross_validation_nnet_stepAUC,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  sizes = c(5,10,15,20),
+  decays = c(0.1, 0.2, 0.3),
+  vars = todas_variables_factor,
+  threshold = .35,
+  seeds = seeds
+)
+```
+
+```{r, message=FALSE, warning=FALSE}
+load("RData_Files_Algorithms/ANN_StepAUC")
+```
 
 ### Embedded (Lasso)
 
+```{r, eval=FALSE}
+double_cross_validation_nnet_lasso <- function(data, target_name, outer, inner, sizes, decays, threshold, seed) {
+  set.seed(seed)
+  performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
+                                    FP = integer(), FN = integer(), AUC = numeric(),
+                                    Best_Size = integer(), Best_Decay = numeric(), Best_Variables = character(), stringsAsFactors = FALSE)
+  
+  inner_fold_metrics <- data.frame(Fold = integer(), Inner_Fold = integer(), 
+                                   TP = integer(), TN = integer(), FP = integer(), 
+                                   FN = integer(), AUC = numeric(), stringsAsFactors = FALSE)
+  
+  # Convertir las variables del dataset con model.matrix
+  target <- as.numeric(data[[target_name]]) - 1
+  features <- data[, setdiff(names(data), target_name)]
+  data_matrix <- as.data.frame(model.matrix(~ ., data=features)[,-1])  # Eliminar el intercepto
+  data_matrix[[target_name]] <- target
+  
+  outer_folds <- createFolds(data_matrix[[target_name]], k = outer)
+  
+  for (outer_index in seq_along(outer_folds)) {
+    outer_train_data <- data_matrix[-outer_folds[[outer_index]], ]
+    outer_test_data <- data_matrix[outer_folds[[outer_index]], ]
+    
+    cat(sprintf("Outer Fold %d\n", outer_index))
+    cat("Training Data - Class 0: ", sum(outer_train_data[[target_name]] == 0), "\n")
+    cat("Training Data - Class 1: ", sum(outer_train_data[[target_name]] == 1), "\n")
+    cat("Testing Data - Class 0: ", sum(outer_test_data[[target_name]] == 0), "\n")
+    cat("Testing Data - Class 1: ", sum(outer_test_data[[target_name]] == 1), "\n")
+    
+    inner_folds <- createFolds(outer_train_data[[target_name]], k = inner)
+    best_model <- NULL
+    best_auc <- 0
+    best_size <- NULL
+    best_decay <- NULL
+    best_vars <- colnames(outer_train_data)[!colnames(outer_train_data) %in% target_name]
+    
+    grid <- expand.grid(size = sizes, decay = decays)
+    
+    select_vars_lasso <- function(data, target_name) {
+      target <- as.numeric(data[[target_name]])
+      features <- data[, setdiff(names(data), target_name)]
+      X <- model.matrix(~ ., data=features)[,-1]  # Eliminamos el intercepto
+      y <- target
+      
+      # Ajustamos el modelo Lasso
+      lasso_model <- cv.glmnet(X, y, alpha=1)
+      lasso_coef <- coef(lasso_model, s = "lambda.min")
+      
+      # Seleccionamos las variables no nulas
+      selected_vars <- rownames(lasso_coef)[lasso_coef[, 1] != 0]
+      selected_vars <- setdiff(selected_vars, "(Intercept)")
+      cat("Selected variables by Lasso: ", paste(selected_vars, collapse=", "), "\n")
+      return(selected_vars)
+    }
+    
+    stepAUC <- function(vars, data, target_name, grid, inner_folds) {
+      best_inner_auc <- 0
+      best_inner_model <- NULL
+      best_inner_size <- NULL
+      best_inner_decay <- NULL
+      best_inner_vars <- vars
+      improved <- TRUE
+      
+      while (improved && length(vars) > 1) {
+        improved <- FALSE
+        best_auc_in_step <- best_inner_auc
+        
+        for (params in 1:nrow(grid)) {
+          auc_vals <- numeric()
+          
+          for (inner_index in seq_along(inner_folds)) {
+            inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
+            inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
+            
+            selected_vars <- select_vars_lasso(inner_train_data, target_name)
+            formula <- as.formula(paste(target_name, "~", paste(selected_vars, collapse = "+")))
+            #cat("Testing with formula: ", deparse(formula), "\n")
+            #cat("Grid parameters - size: ", grid$size[params], ", decay: ", grid$decay[params], "\n")
+            
+            result <- tryCatch({
+              model <- nnet(formula, data = inner_train_data, size = grid$size[params], 
+                            decay = grid$decay[params], linout = FALSE, maxit = 200, trace = FALSE)
+              
+              predictions <- predict(model, inner_test_data, type = "raw")
+              roc_curve <- roc(inner_test_data[[target_name]], predictions)
+              auc_vals[inner_index] <- roc_curve$auc
+              #cat("AUC for inner fold ", inner_index, ": ", roc_curve$auc, "\n")
+              
+            }, error = function(e) {
+              cat("Error with variables: ", paste(selected_vars, collapse = ", "), "\n")
+              cat("Error message: ", e$message, "\n")
+              auc_vals[inner_index] <- NA  # Set to NA or some other indicator of failure
+            })
+          }
+          
+          mean_auc <- mean(auc_vals, na.rm = TRUE)
+          #cat("Mean AUC for params - size: ", grid$size[params], ", decay: ", grid$decay[params], ": ", mean_auc, "\n")
+          if (!is.na(mean_auc) && mean_auc > best_auc_in_step) {
+            best_auc_in_step <- mean_auc
+            best_inner_model <- model
+            best_inner_size <- grid$size[params]
+            best_inner_decay <- grid$decay[params]
+            best_inner_vars <- selected_vars
+            improved <- TRUE
+          }
+        }
+        
+        if (improved) {
+          vars <- best_inner_vars
+          best_inner_auc <- best_auc_in_step
+          cat("Vars improved: ", paste(vars, collapse=", "), "\n")
+          cat("AUC: ", best_inner_auc, "\n")
+        }
+      }
+      
+      list(model = best_inner_model, auc = best_inner_auc, 
+           size = best_inner_size, decay = best_inner_decay, 
+           vars = best_inner_vars)
+    }
+    
+    best_result <- stepAUC(best_vars, outer_train_data, target_name, grid, inner_folds)
+    best_model <- best_result$model
+    best_auc <- best_result$auc
+    best_size <- best_result$size
+    best_decay <- best_result$decay
+    best_vars <- best_result$vars
+    
+    if (is.null(best_model)) {
+      cat("Error: No valid model found for outer fold ", outer_index, "\n")
+      next
+    }
+
+    # Evaluar el mejor modelo en el validation split del inner loop
+    inner_auc_vals <- numeric()
+    for (inner_index in seq_along(inner_folds)) {
+      inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
+      inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
+      
+      predictions <- predict(best_model, inner_test_data, type = "raw")
+      roc_curve <- roc(inner_test_data[[target_name]], predictions)
+      inner_auc_vals[inner_index] <- roc_curve$auc
+      #cat("Inner fold ", inner_index, " AUC: ", roc_curve$auc, "\n")
+
+      pred_class <- ifelse(predictions > threshold, 1, 0)
+      confusion <- table(Actual = inner_test_data[[target_name]], Predicted = pred_class)
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+      auc <- roc_curve$auc
+      
+      inner_metrics <- setNames(c(outer_index, inner_index, TP, TN, FP, FN, auc), names(inner_fold_metrics))
+      inner_fold_metrics <- rbind(inner_fold_metrics, as.data.frame(t(inner_metrics)))
+    }
+    
+    best_inner_auc <- mean(inner_auc_vals, na.rm = TRUE)
+    #cat("Best inner AUC: ", best_inner_auc, "\n")
+    
+    predictions <- predict(best_model, outer_test_data, type = "raw")
+    pred_class <- ifelse(predictions > threshold, 1, 0)  # Asignar clases basadas en umbral
+    confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
+    
+    if (nrow(confusion) < 2 || ncol(confusion) < 2) {
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+    } else {
+      TP <- confusion[2, 2]
+      TN <- confusion[1, 1]
+      FP <- confusion[1, 2]
+      FN <- confusion[2, 1]
+    }
+    auc <- roc(outer_test_data[[target_name]], predictions)$auc
+    
+    metrics <- setNames(c(outer_index, TP, TN, FP, FN, auc, 
+                          best_size, best_decay, paste(best_vars, collapse = ",")), 
+                        names(performance_metrics))
+    performance_metrics <- rbind(performance_metrics, as.data.frame(t(metrics)))
+    
+    cat("Performance:\n", paste(performance_metrics), "\n")
+    cat(sprintf("Confusion Matrix for Fold %d:\n", outer_index))
+    print(confusion)
+    cat(sprintf("Metrics for Fold %d:\n", outer_index))
+    cat(sprintf("TP: %d, TN: %d, FP: %d, FN: %d, AUC: %f, Best Size: %d, Best Decay: %f, Best Variables: %s\n",
+                TP, TN, FP, FN, auc, best_size, best_decay, paste(best_vars, collapse = ",")))
+  }
+  
+  list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics)
+}
+
+evaluate_with_seeds_ANN_lasso <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, sizes, decays) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed,
+                                   sizes = sizes,
+                                   decays = decays)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+  }
+
+performance_ANN_lasso <- evaluate_with_seeds_ANN_lasso(
+  evaluation_function = double_cross_validation_nnet_lasso,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  sizes = c(5,10,15,20),
+  decays = c(0.1, 0.2, 0.3),
+  threshold = .35,
+  seeds = seeds
+)
+```
+
+```{r, message=FALSE, warning=FALSE}
+load("RData_Files_Algorithms/ANN_Lasso")
+```
 
 
 # Discusión: Estudio de los Resultados
