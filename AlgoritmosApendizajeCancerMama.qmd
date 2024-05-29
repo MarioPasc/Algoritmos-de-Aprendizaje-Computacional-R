@@ -193,6 +193,145 @@ data_numeric <- encode_data(data_original, "PCR")
 knitr::kable(head(data_numeric, 10))
 ```
 
+#### Análisis Exploratorio
+
+Se va a proceder a realizar un análisis de la distribución de los datos del conjunto `data_factor`. Este análisis pretende dar conclusiones sobre el sesgo y la varianza de los datos con la finalidad de tomar decisiones sobre la inclusión o deleción de variables del conjunto de datos. 
+
+```{r}
+blue = '#377eb8'
+red = '#e41a1c'
+plot_variable_distribution <- function(data, variable_name, target_name) {
+  # Comprobar si las variables existen en el data.frame
+  if (!(variable_name %in% names(data) && target_name %in% names(data))) {
+    stop("Una o ambas variables especificadas no existen en el data.frame proporcionado.")
+  }
+  
+  # Extraer la variable y la variable target del data.frame
+  variable <- data[[variable_name]]
+  target <- data[[target_name]]
+  
+  # Asegurar que la variable target es factor
+  data[[target_name]] <- as.factor(data[[target_name]])
+  
+  # Determinar si la variable principal es numérica o factor
+  if (is.numeric(variable)) {
+    # Crear un histograma para variables numéricas
+    p <- ggplot(data, aes_string(x = variable_name, fill = target_name)) +
+      geom_histogram(position = "identity", alpha = 0.5, bins = 30) +
+      scale_fill_manual(values = c("0" = blue, "1" = red)) +
+      ggtitle(paste("Distribución de", variable_name, "por", target_name)) +
+      xlab(variable_name) +
+      ylab("Frecuencia")
+  } else if (is.factor(variable)) {
+    # Crear un gráfico de barras para factores
+    p <- ggplot(data, aes_string(x = variable_name, fill = target_name)) +
+      geom_bar(position = "stack") +
+      scale_fill_manual(values = c("0" = blue, "1" = red)) +
+      ggtitle(paste("Distribución de", variable_name, "por", target_name)) +
+      xlab(variable_name) +
+      ylab("Frecuencia") +
+      theme(legend.position = "right")
+  } else {
+    stop("El tipo de la variable debe ser numérico o factor.")
+  }
+  
+  # Imprimir el gráfico
+  print(p)
+}
+```
+
+
+::: {.panel-tabset}
+
+## Edad
+
+```{r, message=FALSE, warning=FALSE}
+plot_variable_distribution(data_factor, "Edad", "PCR")
+```
+Como se puede observar, la variable `Edad` parece seguir una distribución normal o gaussiana, en la que la mayor cantidad de los datos se encuentran en los grupos centrales. La mayoría de los datos están clasificados por PCR-Positivos (`PCR=1`), indicando un claro sesgo, sin embargo, se considera que hay suficientes datos en la variable como para mantenerla.   
+
+## REst
+
+```{r, message=FALSE, warning=FALSE}
+plot_variable_distribution(data_factor, "REst", "PCR")
+```
+La variable `REst` muestra dos clases, para las cuales hay una diferencia de datos de, aproximadamente, 100 muestras. La clase `N` muestra un mayor equilibrio en cuanto a la relación de pacientes PCR-Positivos y PCR-Negativos que el valor `P`, para el cual, solo paroximadamente un sexto de los datos son PCR-Positivos.
+
+## RPro
+
+```{r, message=FALSE, warning=FALSE}
+plot_variable_distribution(data_factor, "RPro", "PCR")
+```
+
+La variable `RPro` muestra dos clases (`N` y `P`). Ambas clases tienen una distribución similar en términos de número de muestras totales. La clase `N` presenta una mayor proporción de pacientes PCR-Positivos (`PCR=1`) en comparación con la clase `P`.
+
+
+## Her2
+
+```{r, message=FALSE, warning=FALSE}
+plot_variable_distribution(data_factor, "Her2", "PCR")
+```
+
+
+
+La variable `Her2` muestra dos clases (`N` y `P`). La clase `N` tiene una distribución mucho mayor de muestras en comparación con la clase `P`. En la clase `N`, hay una cantidad significativa de pacientes PCR-Positivos (`PCR=1`), mientras que en la clase `P`, los datos son escasos, lo que puede dificultar análisis concluyentes, es por esto que se ha decidido **eliminar la variable `Her2` de los conjuntos de datos**. 
+
+```{r}
+data_numeric$Her2P <- NULL
+data_factor$Her2 <- NULL
+data_original$Her2 <- NULL
+```
+
+## Estadio
+
+```{r, message=FALSE, warning=FALSE}
+plot_variable_distribution(data_factor, "Estadio", "PCR")
+```
+
+
+La variable `Estadio` presenta varias categorías (`T0-T1`, `T2`, `T3`, `T4`). La mayoría de las muestras se encuentran en la categoría `T2`, seguida de `T3`. Las categorías `T0-T1` y `T4` tienen menos muestras. En todas las categorías, los pacientes PCR-Negativos (`PCR=0`) son mayoría, pero la proporción de PCR-Positivos (`PCR=1`) varía entre las categorías, siendo notablemente menor en `T4`.
+
+
+## NodAfec
+
+```{r, message=FALSE, warning=FALSE}
+plot_variable_distribution(data_factor, "NodAfec", "PCR")
+```
+La variable `NodAfec` muestra varias categorías (`N0`, `N1`, `N2`, `N3`). La categoría `N1` tiene la mayor cantidad de muestras, seguida de `N0`, con `N2` y `N3` teniendo menos muestras. En todas las categorías, los pacientes PCR-Negativos (`PCR=0`) son mayoría. La proporción de PCR-Positivos (`PCR=1`) es relativamente constante en todas las categorías, aunque menor en comparación con los PCR-Negativos.
+
+
+## Grado
+
+```{r, message=FALSE, warning=FALSE}
+plot_variable_distribution(data_factor, "Grado", "PCR")
+```
+
+
+La variable `Grado` tiene tres niveles (`I`, `II`, `III`). El nivel `III` tiene la mayor cantidad de muestras, seguido por `II`. El nivel `I` tiene significativamente menos muestras. En los niveles `II` y `III`, hay una proporción considerable de pacientes PCR-Positivos (`PCR=1`), especialmente en `III`.
+
+
+## Fenotipo
+
+```{r, message=FALSE, warning=FALSE}
+plot_variable_distribution(data_factor, "Fenotipo", "PCR")
+```
+
+
+La variable `Fenotipo` tiene varias categorías (`Basal`, `Her2`, `LumA`, `LumB`, `Normal`). La categoría `Basal` tiene la mayor cantidad de muestras, seguida de `LumA`. Las categorías `Her2`, `LumB` y `Normal` tienen menos muestras. En `Basal`, hay una proporción significativa de pacientes PCR-Positivos (`PCR=1`), mientras que en las otras categorías, la proporción es menor.
+
+
+## PCR
+
+```{r, message=FALSE, warning=FALSE}
+plot_variable_distribution(data_factor, "PCR", "PCR")
+```
+
+
+La variable `PCR` muestra la distribución de los pacientes en las dos clases (`0` y `1`). La mayoría de las muestras son PCR-Negativos (`PCR=0`), con una menor proporción de PCR-Positivos (`PCR=1`). Esta distribución sugiere un sesgo hacia los resultados negativos, lo cual se tendrá en cuenta en los análisis posteriores.
+:::
+
+
+
 
 ## Métodos
 
@@ -233,7 +372,34 @@ En este estudio, se han realizado cuatro esquemas de selección de característi
 
 1. **Todas las Variables del Conjunto**: En este enfoque, se entrena el modelo utilizando todas las variables disponibles en el conjunto de datos, sin realizar ningún tipo de selección previa. Esto sirve como una línea base para comparar la efectividad de los métodos de selección de características.
 
-2. **Métodos de Filtrado: Análisis de Asociación**: Este método de filtrado se basa en el análisis de asociación, donde se evalúa la relación individual de cada variable con la variable objetivo. Se seleccionan aquellas variables que muestran una fuerte asociación, lo que permite reducir el conjunto de características antes del entrenamiento del modelo.
+2. **Métodos de Filtrado: Análisis de Asociación**: Este método de filtrado se basa en el análisis de asociación, donde se evalúa la relación individual de cada variable con la variable objetivo. Se seleccionan aquellas variables que muestran una fuerte asociación, lo que permite reducir el conjunto de características antes del entrenamiento del modelo. Para poder realizar este análisis de asociación se inspeccionará el mapa de calor proporcionado por la función `plot_p_valores`. Como se puede observar, las variables seleccionadas son `Estadio`, `Fenotipo`, `Grado`, `REst` y `RPro`. Por lo que estas variables constituirán el vector de características `asociacion`, usado para la ejecución de los métodos de filtrado en los modelos.  
+
+```{r}
+source("./aux_scripts/calculaPValor.R")
+plot <- plot_p_valores(data_factor)
+print(plot)
+
+# Se construye el vector de variables factor y numéricas asociación a partir de los resultados del análisis
+
+todas_variables_factor <- colnames(data_factor)[!colnames(data_factor) %in% "PCR"]
+todas_variables_numeric <- colnames(data_numeric)[!colnames(data_numeric) %in% "PCR"]
+
+select_associated_variables <- function(asociacion, total_variables_numeric) {
+  selected_variables <- c()
+  
+  for (assoc in asociacion) {
+    # Buscar variables que contengan el nombre en asociacion
+    matching_vars <- total_variables_numeric[grepl(assoc, total_variables_numeric)]
+    selected_variables <- c(selected_variables, matching_vars)
+  }
+  
+  return(selected_variables)
+}
+
+asociacion <- c("Estadio", "Fenotipo", "Grado", "REst", "RPro")
+asociacion_numeric <- select_associated_variables(asociacion, todas_variables_numeric)
+```
+
 
 3. **Métodos Wrapped: StepAUC Backwards**: En este método, se comienza con todas las variables incluidas en el modelo. Durante el proceso de entrenamiento en el *inner loop*, se prueban eliminando variables una por una. Si la eliminación de una variable mejora el AUC (Área Bajo la Curva), la variable se elimina permanentemente del conjunto. Este proceso se repite hasta que la eliminación de más variables no resulta en una mejora del AUC, determinando así el conjunto final de características seleccionadas.
 
@@ -310,7 +476,7 @@ donde $\mathbf{w}$ es el vector de pesos y $b$ es el sesgo. El objetivo es encon
 
 - **Kernel**: Este parámetro define la función de transformación que se utiliza para proyectar los datos en un espacio de mayor dimensión. Los kernels disponibles incluyen:
 
-  - **Lineal**: $ K(\mathbf{x_i}, \mathbf{x_j}) = \mathbf{x_i} \cdot \mathbf{x_j} $
+  - **Lineal**: $K(\mathbf{x_i}, \mathbf{x_j}) = \mathbf{x_i} \cdot \mathbf{x_j}$
   - **Sigmoid**: $ K(\mathbf{x_i}, \mathbf{x_j}) = \tanh(\alpha \mathbf{x_i} \cdot \mathbf{x_j} + r) $
   - **Polinomial**: $ K(\mathbf{x_i}, \mathbf{x_j}) = (\alpha \mathbf{x_i} \cdot \mathbf{x_j} + r)^d $
   - **RBF (Radial Basis Function)**: $ K(\mathbf{x_i}, \mathbf{x_j}) = \exp(-\gamma ||\mathbf{x_i} - \mathbf{x_j}||^2) $
@@ -1676,6 +1842,9 @@ double_cross_validation_rpart <- function(data, target_name, outer, inner, cp_va
       }
     }
     
+    best_model <- rpart(formula = as.formula(paste(target_name, "~", paste(variables, collapse = "+"))),
+                       data = outer_test_data, control = rpart.control(cp = best_cp, minsplit = best_minsplit))
+    
     predictions <- predict(best_model, outer_test_data, type = "prob")[, 2]
     pred_class <- ifelse(predictions > threshold, 1, 0)  # Asignar clases basadas en umbral
     confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
@@ -1699,7 +1868,6 @@ double_cross_validation_rpart <- function(data, target_name, outer, inner, cp_va
   
   return(performance_metrics)
 }
-
 evaluate_with_seeds_RandomForest_TodasVariables_Asociacion <- 
   function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, cp_values, minsplit_values) {
   results_list <- list()
@@ -1805,36 +1973,36 @@ double_cross_validation_rpart_stepAUC <- function(data, target_name, outer, inne
       best_inner_minsplit <- NULL
       best_inner_vars <- current_vars
       improved <- TRUE
-      
+    
       while (improved && length(current_vars) > 1) {
         improved <- FALSE
         best_auc_in_step <- best_inner_auc
-        
+    
         for (var in current_vars) {
           temp_vars <- setdiff(current_vars, var)
           inner_auc <- numeric()
-          
+    
           for (params in 1:nrow(grid)) {
             auc_vals <- numeric()
-            
+    
             for (inner_index in seq_along(inner_folds)) {
-              inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
-              inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
-              
+              inner_train_data <- data[-inner_folds[[inner_index]], ]
+              inner_test_data <- data[inner_folds[[inner_index]], ]
+    
               result <- tryCatch({
                 model <- rpart(as.formula(paste(target_name, "~", paste(temp_vars, collapse = "+"))),
                                data = inner_train_data, control = rpart.control(cp = grid$cp[params], minsplit = grid$minsplit[params]))
-                
+    
                 predictions <- predict(model, inner_test_data, type = "prob")[, 2]
                 roc_curve <- roc(inner_test_data[[target_name]], predictions)
                 auc_vals[inner_index] <- roc_curve$auc
-                
+    
               }, error = function(e) {
                 cat("Error with variables:", paste(temp_vars, collapse = ", "), "\n")
                 auc_vals[inner_index] <- 0
               })
             }
-            
+    
             if (mean(auc_vals, na.rm = TRUE) > best_auc_in_step) {
               best_auc_in_step <- mean(auc_vals, na.rm = TRUE)
               best_inner_model <- model
@@ -1845,7 +2013,7 @@ double_cross_validation_rpart_stepAUC <- function(data, target_name, outer, inne
             }
           }
         }
-        
+    
         if (improved) {
           current_vars <- best_inner_vars
           best_inner_auc <- best_auc_in_step
@@ -1853,11 +2021,12 @@ double_cross_validation_rpart_stepAUC <- function(data, target_name, outer, inne
           cat("AUC: ", paste(best_inner_auc), "\n")
         }
       }
-      
+    
       list(model = best_inner_model, auc = best_inner_auc, 
            cp = best_inner_cp, minsplit = best_inner_minsplit, 
            vars = best_inner_vars)
     }
+
     
     best_result <- stepAUC(variables, outer_train_data, target_name, grid, inner_folds)
     best_model <- best_result$model
@@ -1871,11 +2040,11 @@ double_cross_validation_rpart_stepAUC <- function(data, target_name, outer, inne
     for (inner_index in seq_along(inner_folds)) {
       inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
       inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
-      
+    
       predictions <- predict(best_model, inner_test_data, type = "prob")[, 2]
       roc_curve <- roc(inner_test_data[[target_name]], predictions)
       inner_auc_vals[inner_index] <- roc_curve$auc
-
+    
       pred_class <- ifelse(predictions > threshold, "1", "0")
       confusion <- table(Actual = inner_test_data[[target_name]], Predicted = pred_class)
       TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
@@ -1883,13 +2052,17 @@ double_cross_validation_rpart_stepAUC <- function(data, target_name, outer, inne
       FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
       FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
       auc <- roc_curve$auc
-      
+    
       inner_metrics <- setNames(c(outer_index, inner_index, TP, TN, FP, FN, auc), names(inner_fold_metrics))
       inner_fold_metrics <- rbind(inner_fold_metrics, as.data.frame(t(inner_metrics)))
     }
+
     
     best_inner_auc <- mean(inner_auc_vals, na.rm = TRUE)
-    
+    # Reentrenar el mejor modelo con todos los datos de outer_train_data
+    best_model <- rpart(as.formula(paste(target_name, "~", paste(best_vars, collapse = "+"))),
+                    data = outer_train_data, control = rpart.control(cp = best_cp, minsplit = best_minsplit))
+
     predictions <- predict(best_model, outer_test_data, type = "prob")[, 2]
     pred_class <- ifelse(predictions > threshold, "1", "0")
     confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
@@ -1920,7 +2093,7 @@ double_cross_validation_rpart_stepAUC <- function(data, target_name, outer, inne
                 TP, TN, FP, FN, auc, best_cp, best_minsplit, paste(best_vars, collapse = ",")))
   }
   
-  list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics)
+  return(list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics))
 }
 
 evaluate_with_seeds_RandomForest_StepAUC <- 
@@ -2334,9 +2507,14 @@ double_cross_validation_knn <- function(data, target_name, outer, inner, ks, ls,
       next
     }
 
+    # Reentrenar el mejor modelo con todos los datos de outer_train_data
+    train_x <- outer_train_data[, variables, drop = FALSE]
+    train_y <- outer_train_data[[target_name]]
+    
+    # Evaluar el mejor modelo en el conjunto de prueba del outer fold
     test_x <- outer_test_data[, variables, drop = FALSE]
     test_y <- outer_test_data[[target_name]]
-    predictions <- knn(train = best_model$train_x, test = test_x, cl = best_model$train_y, k = best_k, prob = TRUE)
+    predictions <- knn(train = train_x, test = test_x, cl = train_y, k = best_k, prob = TRUE)
     probabilities <- attr(predictions, "prob")
     probabilities <- ifelse(predictions == "1", probabilities, 1 - probabilities)
     pred_class <- ifelse(probabilities > threshold, "1", "0")
@@ -2368,7 +2546,6 @@ double_cross_validation_knn <- function(data, target_name, outer, inner, ks, ls,
   
   return(performance_metrics)
 }
-
 evaluate_with_seeds_KNN_TodasVariables_Asociacion <- 
   function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, ks, ls) {
   results_list <- list()
@@ -2533,6 +2710,7 @@ double_cross_validation_knn_stepAUC <- function(data, target_name, outer, inner,
       
     }
     
+    # Después de seleccionar el mejor modelo y parámetros en los inner folds
     best_result <- stepAUC(variables, outer_train_data, target_name, grid, inner_folds)
     best_model <- best_result$model
     best_auc <- best_result$auc
@@ -2570,6 +2748,12 @@ double_cross_validation_knn_stepAUC <- function(data, target_name, outer, inner,
     
     best_inner_auc <- mean(inner_auc_vals, na.rm = TRUE)
     
+    # Reentrenar el mejor modelo con todos los datos de outer_train_data
+    train_x <- outer_train_data[, best_vars, drop = FALSE]
+    train_y <- outer_train_data[[target_name]]
+    best_model <- list(train_x = train_x, train_y = train_y, k = best_k, l = best_l)
+    
+    # Evaluar el mejor modelo en el conjunto de prueba del outer fold
     test_x <- outer_test_data[, best_vars, drop = FALSE]
     test_y <- outer_test_data[[target_name]]
     predictions <- knn(train = best_model$train_x, test = test_x, cl = best_model$train_y, k = best_k, l = best_l, prob = TRUE)
@@ -2605,7 +2789,6 @@ double_cross_validation_knn_stepAUC <- function(data, target_name, outer, inner,
   
   list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics)
 }
-
 evaluate_with_seeds_KNN_stepAUC <- 
   function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, ks, ls) {
   results_list <- list()
@@ -2819,16 +3002,19 @@ double_cross_validation_knn_lasso <- function(data, target_name, outer, inner, k
     best_inner_auc <- mean(inner_auc_vals, na.rm = TRUE)
     cat("Best inner AUC: ", best_inner_auc, "\n")
     
+    # Reentrenar el mejor modelo con todos los datos de outer_train_data
     train_x <- outer_train_data[, best_vars, drop = FALSE]
-    test_x <- outer_test_data[, best_vars, drop = FALSE]
     train_y <- outer_train_data[[target_name]]
-    test_y <- outer_test_data[[target_name]]
+    best_model <- list(train_x = train_x, train_y = train_y, k = best_k, l = best_l)
     
-    predictions <- knn(train_x, test_x, train_y, k = best_k, l = best_l, prob = TRUE)
+    # Evaluar el mejor modelo en el conjunto de prueba del outer fold
+    test_x <- outer_test_data[, best_vars, drop = FALSE]
+    test_y <- outer_test_data[[target_name]]
+    predictions <- knn(train = best_model$train_x, test = test_x, cl = best_model$train_y, k = best_k, l = best_l, prob = TRUE)
     prob_predictions <- attr(predictions, "prob")
     prob_predictions <- ifelse(predictions == "1", prob_predictions, 1 - prob_predictions)
-    pred_class <- ifelse(prob_predictions > threshold, 1, 0)  # Asignar clases basadas en umbral
-    confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
+    pred_class <- ifelse(prob_predictions > threshold, 1, 0)
+    confusion <- table(Actual = test_y, Predicted = pred_class)
     
     if (nrow(confusion) < 2 || ncol(confusion) < 2) {
       TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
@@ -2858,7 +3044,6 @@ double_cross_validation_knn_lasso <- function(data, target_name, outer, inner, k
   
   list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics)
 }
-
 evaluate_with_seeds_KNN_lasso <- 
   function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, ks, ls) {
   results_list <- list()
@@ -3028,7 +3213,9 @@ double_cross_validation_svm <- function(data, target_name, outer, inner, kernels
         best_cost <- grid$cost[params]
       }
     }
-
+    best_model <- svm(reformulate(variables, target_name), 
+                      data = outer_train_data, kernel = best_kernel, cost = best_cost, 
+                      probability = TRUE)
     predictions <- predict(best_model, outer_test_data, probability = TRUE)
     prob <- attr(predictions, "probabilities")[, 2]
     pred_class <- ifelse(prob > threshold, 1, 0)  # Asignar clases basadas en umbral
@@ -3227,7 +3414,7 @@ double_cross_validation_svm_stepAUC <- function(data, target_name, outer, inner,
     best_cost <- best_result$cost
     best_vars <- best_result$vars
 
-    # Evaluar el mejor modelo en el validation split del inner loop
+    # Evaluar el mejor modelo en el validation split del inner loop 
     inner_auc_vals <- numeric()
     for (inner_index in seq_along(inner_folds)) {
       inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
@@ -3251,7 +3438,10 @@ double_cross_validation_svm_stepAUC <- function(data, target_name, outer, inner,
     }
     
     best_inner_auc <- mean(inner_auc_vals, na.rm = TRUE)
-    
+    # Reentrenar el mejor modelo con todos los datos de outer_train_data
+    best_model <- svm(as.formula(paste(target_name, "~", paste(best_vars, collapse = "+"))),
+                      data = outer_train_data, kernel = best_kernel, cost = best_cost, 
+                      probability = TRUE)
     predictions <- predict(best_model, newdata = outer_test_data, probability = TRUE)
     predictions <- attr(predictions, "probabilities")[, 2]
     pred_class <- ifelse(predictions > threshold, 1, 0)  # Asignar clases basadas en umbral
@@ -3285,6 +3475,7 @@ double_cross_validation_svm_stepAUC <- function(data, target_name, outer, inner,
   
   list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics)
 }
+
 evaluate_with_seeds_SVM_stepAUC <- 
   function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, kernels, costs) {
   results_list <- list()
@@ -3487,7 +3678,9 @@ double_cross_validation_svm_lasso <- function(data, target_name, outer, inner, k
     
     best_inner_auc <- mean(inner_auc_vals, na.rm = TRUE)
     cat("Best inner AUC: ", best_inner_auc, "\n")
-    
+    best_model <- svm(as.formula(paste(target_name, "~", paste(best_vars, collapse = "+"))),
+                      data = outer_train_data, kernel = best_kernel, cost = best_cost, 
+                      probability = TRUE)
     predictions <- predict(best_model, outer_test_data, probability = TRUE)
     predictions_prob <- attr(predictions, "probabilities")[, 2]
     pred_class <- ifelse(predictions_prob > threshold, "1", "0")  # Asignar clases basadas en umbral
@@ -3686,6 +3879,7 @@ double_cross_validation_nnet <- function(data, target_name, outer, inner, sizes,
         best_decay <- grid$decay[params]
       }
     }
+    model <- nnet(formula, data = outer_train_data, size = best_size, decay = best_decay, linout = FALSE, maxit = 200)
 
     predictions <- predict(best_model, outer_test_data, type = "raw")
     pred_class <- ifelse(predictions > threshold, 1, 0)  # Asignar clases basadas en umbral
@@ -3710,7 +3904,6 @@ double_cross_validation_nnet <- function(data, target_name, outer, inner, sizes,
 
   return(performance_metrics)
 }
-
 evaluate_with_seeds_ANN_TodasVariables_Asociacion <- 
   function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, sizes, decays) {
   results_list <- list()
@@ -3883,11 +4076,15 @@ double_cross_validation_nnet_stepAUC <- function(data, target_name, outer, inner
     }
     
     best_result <- stepAUC(variables, outer_train_data, target_name, grid, inner_folds)
-    best_model <- best_result$model
     best_auc <- best_result$auc
     best_size <- best_result$size
     best_decay <- best_result$decay
     best_vars <- best_result$vars
+    
+    # Reentrenar el mejor modelo con todos los datos de outer_train_data
+    best_model <- nnet(as.formula(paste(target_name, "~", paste(best_vars, collapse = "+"))),
+                       data = outer_train_data, size = best_size, decay = best_decay, 
+                       linout = FALSE, maxit = 200, trace = FALSE)
     
     predictions <- predict(best_model, outer_test_data, type = "raw")
     pred_class <- ifelse(predictions > threshold, 1, 0)  # Asignar clases basadas en umbral
@@ -4122,7 +4319,10 @@ double_cross_validation_nnet_lasso <- function(data, target_name, outer, inner, 
     
     best_inner_auc <- mean(inner_auc_vals, na.rm = TRUE)
     #cat("Best inner AUC: ", best_inner_auc, "\n")
-    
+    # Reentrenar el mejor modelo con todos los datos de outer_train_data
+    best_model <- nnet(as.formula(paste(target_name, "~", paste(best_vars, collapse = "+"))),
+                       data = outer_train_data, size = best_size, decay = best_decay, 
+                       linout = FALSE, maxit = 200, trace = FALSE)
     predictions <- predict(best_model, outer_test_data, type = "raw")
     pred_class <- ifelse(predictions > threshold, 1, 0)  # Asignar clases basadas en umbral
     confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
