@@ -451,7 +451,7 @@ double_cross_validation_naiveBayes <- function(data, target_name, outer, inner, 
       cat("No valid model found for outer fold ", outer_index, "\n")
       next
     }
-
+    best_model <- naiveBayes(formula, data = outer_train_data)
     predictions <- predict(best_model, outer_test_data, type = "raw")[, 2]
     pred_class <- ifelse(predictions > threshold, "1", "0")
     confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
@@ -475,7 +475,6 @@ double_cross_validation_naiveBayes <- function(data, target_name, outer, inner, 
 
   return(performance_metrics)
 }
-
 evaluate_with_seeds_NaiveBayes_Asociacion_Todas <- 
   function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner) {
   results_list <- list()
@@ -648,7 +647,9 @@ double_cross_validation_naiveBayes_stepAUC <- function(data, target_name, outer,
     }
     
     best_inner_auc <- mean(inner_auc_vals, na.rm = TRUE)
-    
+    best_model <- naiveBayes(as.formula(paste(target_name, "~", paste(best_vars, collapse = "+"))),
+                         data = outer_train_data)
+
     predictions <- predict(best_model, outer_test_data, type = "raw")[, 2]
     pred_class <- ifelse(predictions > threshold, "1", "0")
     confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
@@ -681,7 +682,6 @@ double_cross_validation_naiveBayes_stepAUC <- function(data, target_name, outer,
   
   list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics)
 }
-
 evaluate_with_seeds_NaiveBayes_stepAUC <- 
   function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner) {
   results_list <- list()
@@ -862,7 +862,7 @@ double_cross_validation_naiveBayes_lasso <- function(data, target_name, outer, i
     
     best_inner_auc <- mean(inner_auc_vals, na.rm = TRUE)
     cat("Best inner AUC: ", best_inner_auc, "\n")
-    
+    best_model <- naiveBayes(as.formula(paste(target_name, "~", paste(best_vars, collapse = "+"))), data = outer_train_data)
     predictions <- predict(best_model, outer_test_data, type = "raw")[,2]
     pred_class <- ifelse(predictions > threshold, 1, 0)  # Asignar clases basadas en umbral
     confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
@@ -895,7 +895,6 @@ double_cross_validation_naiveBayes_lasso <- function(data, target_name, outer, i
   
   list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics)
 }
-
 evaluate_with_seeds_NaiveBayes_Lasso <- 
   function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner) {
   results_list <- list()
@@ -1055,7 +1054,9 @@ double_cross_validation_adaboost <- function(data, target_name, outer, inner, it
       cat("No valid model found for outer fold ", outer_index, "\n")
       next
     }
-
+    # Reentrenar el mejor modelo con todos los datos de outer_train_data
+    best_model <- blackboost(formula, data = outer_train_data, family = Binomial(), control = boost_control(mstop = best_iteration))
+    
     predictions <- predict(best_model, outer_test_data, type = "response")
     pred_class <- ifelse(predictions > threshold, "1", "0")
     confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
@@ -1263,7 +1264,10 @@ double_cross_validation_adaboost_stepAUC <- function(data, target_name, outer, i
     }
     
     best_inner_auc <- mean(inner_auc_vals, na.rm = TRUE)
-    
+    # Reentrenar el mejor modelo con todos los datos de outer_train_data
+    best_model <- glmboost(as.formula(paste(target_name, "~", paste(best_vars, collapse = "+"))),
+                           data = outer_train_data, family = Binomial(),
+                           control = boost_control(mstop = best_iterations))
     predictions <- predict(best_model, outer_test_data, type = "response")
     pred_class <- ifelse(predictions > threshold, "1", "0")
     confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
@@ -1296,7 +1300,6 @@ double_cross_validation_adaboost_stepAUC <- function(data, target_name, outer, i
   
   list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics)
 }
-
 
 evaluate_with_seeds_AdaBoost_stepAUC <- 
   function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, iterations) {
@@ -1492,7 +1495,10 @@ double_cross_validation_adaboost_lasso <- function(data, target_name, outer, inn
     
     best_inner_auc <- mean(inner_auc_vals, na.rm = TRUE)
     cat("Best inner AUC: ", best_inner_auc, "\n")
-    
+    # Reentrenar el mejor modelo con todos los datos de outer_train_data
+    best_model <- glmboost(as.formula(paste(target_name, "~", paste(best_vars, collapse = "+"))),
+                           data = outer_train_data, family = Binomial(),
+                           control = boost_control(mstop = best_iteration))
     predictions <- predict(best_model, outer_test_data, type = "response")
     pred_class <- ifelse(predictions > threshold, 1, 0)  # Asignar clases basadas en umbral
     confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
@@ -1525,7 +1531,6 @@ double_cross_validation_adaboost_lasso <- function(data, target_name, outer, inn
   
   list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics)
 }
-
 evaluate_with_seeds_AdaBoost_Lasso <- 
   function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, iterations) {
   results_list <- list()
