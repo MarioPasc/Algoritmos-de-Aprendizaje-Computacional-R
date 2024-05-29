@@ -62,6 +62,8 @@ library(nnet)
 library(rpart)
 library(class)
 library(mboost)
+library(plotly)
+library(RColorBrewer)
 
 data_original <- read.csv(file = "./data/datos_limpios.csv", sep = ",", dec=".")
 data_original["X"] <- NULL
@@ -4396,13 +4398,386 @@ load("RData_Files_Algorithms/ANN_Lasso.RData")
 ```
 
 
-# Discusión: Estudio de los Resultados
+# Discusión
 
-## Estabilidad entre Folds
+```{r}
+
+#  Función que combina los dataframes de métricas de rendimiento (performance_metrics) 
+# e inner_fold_metrics de cada semilla en un solo dataframe, añadiendo una columna 
+# "semilla" para diferenciar cada uno
+
+process_experiment_data <- function(raw_data) {
+  # Combinar performance_metrics en un solo dataframe
+  performance_metrics <- bind_rows(
+    lapply(names(raw_data), function(seed) {
+      df <- raw_data[[seed]]$performance_metrics
+      df$seed <- seed
+      return(df)
+    })
+  )
+  
+  # Convertir las columnas relevantes a tipo numérico
+  performance_metrics <- performance_metrics %>%
+    mutate(AUC = as.numeric(AUC),
+           Fold = as.numeric(Fold),
+           TP = as.numeric(TP),
+           TN = as.numeric(TN),
+           FP = as.numeric(FP),
+           FN = as.numeric(FN),
+           Best_Size = as.numeric(Best_Size),
+           Best_Decay = as.numeric(Best_Decay),
+           Seed = as.factor(seed))
+  
+  # Combinar inner_fold_metrics en un solo dataframe
+  inner_fold_metrics <- bind_rows(
+    lapply(names(raw_data), function(seed) {
+      df <- raw_data[[seed]]$inner_fold_metrics
+      df$seed <- seed
+      return(df)
+    })
+  )
+  
+  # Convertir las columnas relevantes a tipo numérico
+  inner_fold_metrics <- inner_fold_metrics %>%
+    mutate(AUC = as.numeric(AUC),
+           Fold = as.numeric(Fold),
+           Inner_Fold = as.numeric(Inner_Fold),
+           TP = as.numeric(TP),
+           TN = as.numeric(TN),
+           FP = as.numeric(FP),
+           FN = as.numeric(FN),
+           Seed = as.factor(seed))
+  
+  inner_fold_metrics$seed <- NULL
+  performance_metrics$seed <- NULL
+  
+  return(list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics))
+}
+
+```
+
+
+
+
+```{r}
+
+# Función para generar la distribución de AUC a través de folds para todas las semillas usadas de un modelo
+
+
+generate_auc_per_seed_and_fold <- function(performance_metrics) {
+  # Calcular el AUC medio por semilla
+  mean_auc_by_seed <- performance_metrics %>%
+    group_by(Seed) %>%
+    summarize(mean_AUC = mean(AUC, na.rm = TRUE))
+  
+  # Crear la visualización en 3D con plotly
+  fig <- plot_ly()
+  
+  # Colores para cada semilla
+  colors <- RColorBrewer::brewer.pal(n = length(unique(performance_metrics$Seed)), name = "Set1")
+  
+  # Añadir los datos de cada semilla como histogramas
+  for (i in seq_along(unique(performance_metrics$Seed))) {
+    seed <- unique(performance_metrics$Seed)[i]
+    subset_data <- performance_metrics %>% filter(Seed == seed)
+    
+    fig <- fig %>%
+      add_trace(
+        x = subset_data$Fold, 
+        y = rep(i, nrow(subset_data)), 
+        z = subset_data$AUC, 
+        type = 'scatter3d',
+        mode = 'lines+markers',
+        line = list(width = 2, color = colors[i]),
+        marker = list(size = 5, color = colors[i]),
+        name = paste('Semilla', gsub("seed_", "", seed), 'AUC medio:', round(mean_auc_by_seed$mean_AUC[i], 3))
+      )
+  }
+  
+  # Añadir detalles al gráfico
+  fig <- fig %>% layout(scene = list(
+    xaxis = list(title = 'Fold'),
+    yaxis = list(title = 'Semilla'),
+    zaxis = list(title = 'AUC'),
+    title = "Visualización 3D de Folds, Semillas y AUC"
+  ))
+  
+  # Mostrar el gráfico
+  return(fig)
+}
+
+```
+
+```{r}
+
+# Gráfico de barras comparativo del AUC medio de los inner folds y el AUC medio de los outer folds
+generate_inner_outer_auc_comparison <- function(inner_fold_metrics, outer_fold_metrics) {
+  # Calcular AUC medio para inner folds
+  mean_inner_auc <- inner_fold_metrics %>%
+    group_by(Fold, Seed) %>%
+    summarize(mean_AUC = mean(AUC, na.rm = TRUE))
+  
+  # Calcular AUC medio para outer folds
+  mean_outer_auc <- outer_fold_metrics %>%
+    group_by(Fold, Seed) %>%
+    summarize(mean_AUC = mean(AUC, na.rm = TRUE))
+  
+  # Unir los dataframes por Fold y Seed
+  comparison_data <- merge(mean_inner_auc, mean_outer_auc, by = c("Fold", "Seed"), suffixes = c("_inner", "_outer"))
+  
+  # Crear la gráfica de barras comparativa
+  fig <- plot_ly(data = comparison_data, x = ~Fold) %>%
+    add_trace(
+      y = ~mean_AUC_inner, 
+      type = 'bar', 
+      name = 'AUC Medio Inner Folds',
+      marker = list(color = 'blue')
+    ) %>%
+    add_trace(
+      y = ~mean_AUC_outer, 
+      type = 'bar', 
+      name = 'AUC Medio Outer Folds',
+      marker = list(color = 'red')
+    ) %>%
+    layout(
+      title = 'Comparación de AUC Medio: Inner Folds vs Outer Folds',
+      xaxis = list(title = 'Fold'),
+      yaxis = list(title = 'AUC Medio'),
+      barmode = 'group'
+    )
+  
+  return(fig)
+}
+
+```
+
+```{r}
+#  Gráfico de violín del AUC medio por outer fold con colores distintos para cada fold
+generate_outer_auc_violin_plot <- function(outer_fold_metrics) {
+  # Calcular AUC medio por outer fold y semilla
+  mean_outer_auc_by_seed <- outer_fold_metrics %>%
+    group_by(Fold, Seed) %>%
+    summarize(mean_AUC = mean(AUC, na.rm = TRUE))
+  
+  # Colores para cada fold
+  colors <- RColorBrewer::brewer.pal(n = length(unique(mean_outer_auc_by_seed$Fold)), name = "Set1")
+  
+  # Crear la gráfica de violín
+  fig <- plot_ly(data = mean_outer_auc_by_seed, y = ~mean_AUC, x = ~factor(Fold), type = 'violin', 
+                 box = list(visible = TRUE), meanline = list(visible = TRUE), points = 'all', spanmode = 'hard',
+                 color = ~factor(Fold), colors = colors) %>%
+    layout(
+      title = 'Distribución del AUC por Outer Fold y Semilla',
+      xaxis = list(title = 'Fold'),
+      yaxis = list(title = 'AUC Medio')
+    )
+  
+  return(fig)
+}
+```
+
+
+
+
+## Estabilidad de AUC entre Folds
+
+
+### ANN
+
+```{r}
+ANN_StepAUC_Metrics <- process_experiment_data(performance_ANN_stepAUC)
+generate_auc_per_seed_and_fold(ANN_StepAUC_Metrics$performance_metrics)
+generate_outer_auc_violin_plot(ANN_StepAUC_Metrics$performance_metrics)
+generate_inner_outer_auc_comparison(ANN_StepAUC_Metrics$inner_fold_metrics, ANN_StepAUC_Metrics$performance_metrics)
+```
+
+
+
 
 ## Estabilidad para Hiperparámetros
 
+```{r}
+generate_hyperparameter_stability_analysis <- function(performance_metrics, hyperparameters) {
+  # Verificar el tamaño de la lista de hiperparámetros
+  if (length(hyperparameters) == 2) {
+    # Extraer los nombres de los hiperparámetros y sus valores posibles
+    hyper_x <- names(hyperparameters)[1]
+    hyper_y <- names(hyperparameters)[2]
+    possible_values_x <- hyperparameters[[hyper_x]]
+    possible_values_y <- hyperparameters[[hyper_y]]
+    
+    # Calcular la frecuencia de selección de cada combinación de hiperparámetros
+    hyperparameter_grid <- expand.grid(possible_values_x, possible_values_y)
+    colnames(hyperparameter_grid) <- c(hyper_x, hyper_y)
+    
+    frequency_data <- performance_metrics %>%
+      count(!!sym(hyper_x), !!sym(hyper_y)) %>%
+      right_join(hyperparameter_grid, by = c(hyper_x, hyper_y)) %>%
+      replace_na(list(n = 0))
+    
+    # Crear el mapa de calor
+    heatmap_plot <- plot_ly(
+      data = frequency_data,
+      x = ~get(hyper_x),
+      y = ~get(hyper_y),
+      z = ~n,
+      type = 'heatmap',
+      colorscale = 'Reds',
+      colorbar = list(title = 'Frecuencia')
+    ) %>%
+      layout(
+        title = paste('Mapa de Calor de Frecuencia de Hiperparámetros:', hyper_x, 'vs', hyper_y),
+        xaxis = list(title = hyper_x),
+        yaxis = list(title = hyper_y)
+      )
+    
+    # Crear el gráfico de violín para mostrar la varianza de cada hiperparámetro
+    violin_plot_x <- plot_ly(data = performance_metrics, y = ~get(hyper_x), type = 'violin', box = list(visible = TRUE), meanline = list(visible = TRUE)) %>%
+      layout(
+        title = paste('Distribución del Hiperparámetro:', hyper_x),
+        yaxis = list(title = hyper_x),
+        xaxis = list(title = hyper_x)
+      )
+    
+    violin_plot_y <- plot_ly(data = performance_metrics, y = ~get(hyper_y), type = 'violin', box = list(visible = TRUE), meanline = list(visible = TRUE)) %>%
+      layout(
+        title = paste('Distribución del Hiperparámetro:', hyper_y),
+        yaxis = list(title = hyper_y),
+        xaxis = list(title = hyper_y)
+      )
+    
+    return(list(heatmap_plot = heatmap_plot, violin_plot_x = violin_plot_x, violin_plot_y = violin_plot_y))
+    
+  } else if (length(hyperparameters) == 1) {
+    # Extraer el nombre del único hiperparámetro y sus valores posibles
+    hyper_x <- names(hyperparameters)[1]
+    possible_values_x <- hyperparameters[[hyper_x]]
+    
+    # Crear el gráfico de violín para mostrar la varianza del único hiperparámetro
+    violin_plot_x <- plot_ly(data = performance_metrics, y = ~get(hyper_x), type = 'violin', box = list(visible = TRUE), meanline = list(visible = TRUE)) %>%
+      layout(
+        title = paste('Distribución del Hiperparámetro:', hyper_x),
+        yaxis = list(title = hyper_x),
+        xaxis = list(title = hyper_x)
+      )
+    
+    return(list(violin_plot_x = violin_plot_x))
+  } else {
+    stop("La lista de hiperparámetros debe contener uno o dos elementos.")
+  }
+}
+```
+
+### ANN
+
+```{r}
+hyperparameters <- list(
+  Best_Size = c(5, 10, 15, 20),
+  Best_Decay = c(0.1, 0.2, 0.3)
+)
+
+result <- generate_hyperparameter_stability_analysis(ANN_StepAUC_Metrics$performance_metrics, hyperparameters)
+
+result$heatmap_plot
+result$violin_plot_x
+result$violin_plot_y
+```
+
+
 ## Estabilidad de Variables
+
+```{r}
+generate_variable_stability_by_seed <- function(performance_metrics) {
+  # Expandir las variables en filas individuales
+  variable_data <- performance_metrics %>%
+    separate_rows(Best_Variables, sep = ",") %>%
+    group_by(Seed, Best_Variables) %>%
+    summarize(count = n(), .groups = 'drop')
+  
+  # Obtener la lista completa de variables
+  all_variables <- unique(variable_data$Best_Variables)
+  
+  # Generar una gráfica de barras por cada semilla
+  unique_seeds <- unique(variable_data$Seed)
+  plots <- list()
+  
+  # Definir la paleta de colores
+  colors <- brewer.pal(n = length(unique_seeds), name = "Set1")
+  
+  # Encontrar el máximo valor para el eje Y
+  max_y_value <- max(variable_data$count, na.rm = TRUE)
+  
+  for (i in seq_along(unique_seeds)) {
+    seed <- unique_seeds[i]
+    seed_data <- filter(variable_data, Seed == seed)
+    
+    # Asegurarse de que todas las variables estén presentes, incluso si no fueron seleccionadas
+    seed_data <- seed_data %>%
+      complete(Best_Variables = all_variables, fill = list(count = 0)) %>%
+      arrange(Best_Variables)
+    
+    fig <- plot_ly(data = seed_data, x = ~Best_Variables, y = ~count, type = 'bar', 
+                   marker = list(color = colors[i])) %>%
+      layout(
+        title = paste('Frecuencia de Selección de Variables para Semilla', gsub("seed_", "", seed)),
+        xaxis = list(title = 'Variable'),
+        yaxis = list(title = 'Frecuencia', range = c(0, max_y_value))
+      )
+    plots[[as.character(seed)]] <- fig
+  }
+  
+  return(plots)
+}
+
+```
+
+```{r}
+generate_variable_stability_overall <- function(performance_metrics) {
+  # Expandir las variables en filas individuales
+  variable_data <- performance_metrics %>%
+    separate_rows(Best_Variables, sep = ",") %>%
+    group_by(Best_Variables) %>%
+    summarize(count = n(), .groups = 'drop') %>%
+    mutate(percentage = count / sum(count) * 100)
+  
+  # Crear el gráfico de barras
+  fig <- plot_ly(data = variable_data, x = ~Best_Variables, y = ~percentage, type = 'bar', 
+                 marker = list(color = 'blue')) %>%
+    layout(
+      title = 'Frecuencia Total de Selección de Variables',
+      xaxis = list(title = 'Variable'),
+      yaxis = list(title = 'Frecuencia (%)')
+    )
+  
+  return(list(plot = fig, dataframe = variable_data))
+}
+
+```
+
+
+## ANN
+
+```{r}
+# Uso de la función con los datos de ejemplo
+# Asumiendo que performance_metrics_combined está generado y disponible
+plots_by_seed <- generate_variable_stability_by_seed(ANN_StepAUC_Metrics$performance_metrics)
+for (seed in names(plots_by_seed)) {
+  print(paste("Gráfica para semilla:", seed))
+  print(plots_by_seed[[seed]])
+}
+
+# Uso de la función con los datos de ejemplo
+# Asumiendo que performance_metrics_combined está generado y disponible
+result_overall <- generate_variable_stability_overall(ANN_StepAUC_Metrics$performance_metrics)
+fig_overall <- result_overall$plot
+variable_stability_df <- result_overall$dataframe
+
+# Mostrar la visualización y el dataframe
+fig_overall
+variable_stability_df
+```
+
+
 
 ## "Mejor" Modelo
 
