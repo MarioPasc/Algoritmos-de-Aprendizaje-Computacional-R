@@ -304,7 +304,7 @@ performance_naiveBayes_Asociacion <- evaluate_with_seeds_NaiveBayes_Asociacion_T
   outer = 5,
   inner = 2,
   target_var = "PCR",
-  vars = todas_variables_factor,
+  vars = asociacion,
   threshold = .35,
   seeds = seeds)
 
@@ -2262,7 +2262,7 @@ performance_RandomForest_todasvariables <- evaluate_with_seeds_RandomForest_Toda
 )
 
 
-performance_RandomForest_Aparente <- evaluate_with_seeds_RandomForest_TodasVariables_Asociacion(
+performance_RandomForest_Asociacion <- evaluate_with_seeds_RandomForest_TodasVariables_Asociacion(
   evaluation_function = double_cross_validation_randomforest,
   data = data_factor,
   outer = 5,
@@ -2278,7 +2278,7 @@ performance_RandomForest_Aparente <- evaluate_with_seeds_RandomForest_TodasVaria
 )
 
 save(performance_RandomForest_todasvariables, file = "RData_Files_Algorithms/RandomForest_TodasVariables.RData")
-save(performance_RandomForest_Aparente, file = "RData_Files_Algorithms/RandomForest_Asociacion.RData")
+save(performance_RandomForest_Asociacion, file = "RData_Files_Algorithms/RandomForest_Asociacion.RData")
 
 ```
 

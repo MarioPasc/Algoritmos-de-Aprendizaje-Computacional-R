@@ -6,38 +6,41 @@ format:
     theme:
       light: flatly
       dark: darkly
-    highlight-style: monokai  # Monokai también funciona bien en temas oscuros
+    highlight-style: monokai
     toc: true
     toc-depth: 3
-    toc-title: "Contenidos"
+    toc-title: Contenidos
     toc-float:
       collapsed: false
       smooth-scroll: true
     toc_scroll: true
     number-sections: true
     code-fold: true
-    code-tools: 
+    code-tools:
       source: true
       toggle: true
-      caption: "Expand Code"
-      
+      caption: Expand Code
     html-math-method: katex
     bibliography: references.bib
     lang: es
     other-links:
-      - text: LinkedIn
-        icon: linkedin
-        href: 'https://www.linkedin.com/in/mario-pascual-gonzalez/'
-      - text: Correo Electrónico
-        icon: envelope
-        href: "mailto:mario.pg02@gmail.com?subject=Contacto desde el informe de Modelado Predictivo"
-      - text: Perfil de Github
-        icon: github
-        href: 'https://github.com/MarioPasc'
+    - text: LinkedIn
+      icon: linkedin
+      href: "https://www.linkedin.com/in/mario-pascual-gonzalez/"
+    - text: Correo Electrónico
+      icon: envelope
+      href: mailto:mario.pg02@gmail.com?subject=Contacto desde el informe de Modelado
+        Predictivo
+    - text: Perfil de Github
+      icon: github
+      href: https://github.com/MarioPasc
     code-links:
-      - text: Repositorio del Informe
-        icon: file-code
-        href: 'https://github.com/MarioPasc/Modelado-Predictivo-Cancer-de-Mama-R'
+    - text: Repositorio del Informe
+      icon: "file-code"
+      href: "https://github.com/MarioPasc/Modelado-Predictivo-Cancer-de-Mama-R"
+resource_files:
+- references.bib
+- Variables.png
 ---
 
 ```{r setup, echo=FALSE, message=FALSE, warning=FALSE}
@@ -403,9 +406,16 @@ asociacion_numeric <- select_associated_variables(asociacion, todas_variables_nu
 ```
 
 
-3. **Métodos Wrapped: StepAUC Backwards**: En este método, se comienza con todas las variables incluidas en el modelo. Durante el proceso de entrenamiento en el *inner loop*, se prueban eliminando variables una por una. Si la eliminación de una variable mejora el AUC (Área Bajo la Curva), la variable se elimina permanentemente del conjunto. Este proceso se repite hasta que la eliminación de más variables no resulta en una mejora del AUC, determinando así el conjunto final de características seleccionadas.
+3. **Métodos Wrapped: StepAUC Backwards**: En este método, se comienza con todas las variables incluidas en el modelo. Durante el proceso de entrenamiento en el *inner loop*, se prueban eliminando variables una por una. **En profundidad**, para cada iteración del proceso, se construyen múltiples modelos predictivos con diferentes combinaciones de variables. El objetivo es identificar el subconjunto de variables que maximiza el rendimiento del modelo según el AUC. En el método wrapper *backwards*, se comienza con el conjunto completo de variables y se eliminan iterativamente variables que no aportan significativamente al rendimiento del modelo. En cada iteración, se construyen múltiples modelos predictivos con diferentes combinaciones de variables, evaluando el impacto de eliminar cada variable en el rendimiento del modelo. El proceso de eliminación de variables funciona de la siguiente manera:
 
-4. **Métodos de Embedded: Modelo Lasso**: El modelo Lasso es un método de regularización que no solo ajusta el modelo, sino que también selecciona automáticamente las variables más importantes. Durante el *inner loop*, se ajusta un modelo Lasso y se seleccionan las variables con coeficientes diferentes de cero. 
+    1. Inicialización: Se comienza con todas las variables disponibles en el conjunto de datos.
+    2. Iteración: Para cada variable en el conjunto actual de variables, se elimina una variable a la vez y se entrena un modelo con las variables restantes.
+    3. Evaluación: Se evalúa el rendimiento del modelo utilizando una métrica predefinida, como el AUC (Área Bajo la Curva ROC), a través de validación cruzada interna.
+    4. Comparación: Si la eliminación de una variable mejora el rendimiento del modelo (es decir, el AUC aumenta), esta variable se elimina permanentemente del conjunto de variables.
+    5. Repetición: Este proceso se repite iterativamente, eliminando una variable a la vez y evaluando el impacto en el rendimiento del modelo, hasta que ya no se observen mejoras significativas en la métrica de rendimiento.
+
+4. **Métodos de Embedded: Modelo Lasso**: El modelo Lasso es un método de regularización que no solo ajusta el modelo, sino que también selecciona automáticamente las variables más importantes. **En profundidad**, el algoritmo programado implementa un proceso de doble validación cruzada para la selección de hiperparámetros y variables en modelos predictivos. Durante la validación cruzada interna, se aplica la selección de variables mediante Lasso (*Least Absolute Shrinkage and Selection Operator*), que ayuda a identificar y eliminar variables menos relevantes, reduciendo así la dimensionalidad del modelo y mejorando potencialmente su rendimiento. Para cada combinación de hiperparámetros, Lasso selecciona un subconjunto óptimo de variables, y el modelo se entrena y evalúa con este subconjunto. Si una combinación particular de hiperparámetros y variables seleccionadas mejora la métrica de rendimiento (AUC), se guarda como la mejor configuración encontrada. Este proceso iterativo continúa hasta que no se encuentran mejoras adicionales. Finalmente, el mejor modelo y sus hiperparámetros seleccionados se evalúan en el conjunto de prueba reservado por el bucle externo, proporcionando una estimación robusta y honesta del rendimiento del modelo en datos no vistos.
+
 
 ### Modelos Aplicados
 
@@ -435,19 +445,31 @@ donde $\alpha_t$ es el peso asignado al clasificador $h_t(x)$ basado en su preci
 
 El principal hiperparámetro ajustado en este estudio ha sido el número de iteraciones $T$. Este parámetro determina cuántos clasificadores débiles se combinarán para formar el clasificador final. Aumentar el número de iteraciones puede mejorar la capacidad del modelo para corregir errores y, por ende, afinar la frontera de decisión, pero también aumenta el riesgo de sobreajuste si el modelo se vuelve demasiado complejo.
 
-#### Random Forest 
+#### Árboles de Decisión
 
-Random Forest opera creando una colección de árboles de decisión, cada uno entrenado con un subconjunto aleatorio del conjunto de datos y un subconjunto aleatorio de características. Este enfoque introduce dos tipos de aleatoriedad: aleatoriedad en las muestras y aleatoriedad en las características, lo que ayuda a reducir la varianza del modelo y mitigar el sobreajuste. En el contexto de este estudio, se ha hecho uso del paquete `rpart` de R.
+Un árbol de decisión divide iterativamente el conjunto de datos en subconjuntos más pequeños utilizando una serie de reglas de decisión basadas en las características del conjunto de datos. Cada división se realiza en un nodo del árbol y produce ramas que representan los posibles valores de las características, conduciendo a hojas que representan las predicciones finales. El objetivo es crear un modelo que prediga el valor de la variable objetivo aprendiendo reglas de decisión simples inferidas de los datos. En este estudio, se ha implementado este algoritmo utilizando el paquete `rpart` de R.
 
-Los principales hiperparámetros ajustados en este estudio han sido `cp_values` y `minsplit_values`. 
+Los principales hiperparámetros ajustados en este estudio han sido:
 
-- **`cp_values` (complexity parameter)**: Este parámetro controla la poda de los árboles de decisión individuales. Un valor más alto de `cp` conduce a una mayor poda, reduciendo la complejidad del árbol y ayudando a prevenir el sobreajuste. Ajustar este parámetro afecta la profundidad de los árboles individuales y, por ende, la precisión del modelo. Una selección óptima de `cp_values` es crucial para equilibrar el sesgo y la varianza del modelo.
+- **`cp_values` (complexity parameter)**: Este parámetro controla la poda del árbol de decisión. La poda es un proceso que elimina ramas del árbol que tienen poca importancia, con el fin de reducir su complejidad y prevenir el sobreajuste. Un valor más alto de `cp` resulta en una mayor poda, lo que produce un árbol más simple. Ajustar este parámetro afecta directamente la profundidad del árbol y su capacidad para capturar patrones en los datos. Seleccionar un `cp` óptimo es esencial para equilibrar el sesgo (si `cp` es muy alto) y la varianza (si `cp` es muy bajo).
 
-- **`minsplit_values`**: Este parámetro define el número mínimo de observaciones que debe tener un nodo para ser considerado para una división. Valores más altos de `minsplit` resultan en árboles más pequeños y menos complejos, mientras que valores más bajos permiten la creación de árboles más detallados. Ajustar `minsplit_values` permite controlar la granularidad con la que el modelo puede capturar las relaciones en los datos. Un valor adecuado de `minsplit` asegura que el modelo sea lo suficientemente flexible para capturar patrones relevantes sin sobreajustarse a ruido específico del conjunto de entrenamiento.
+- **`minsplit_values`**: Este parámetro define el número mínimo de observaciones que un nodo debe tener para ser considerado para una división. Valores más altos de `minsplit` resultan en árboles más pequeños y menos detallados, ya que se requieren más observaciones para realizar una división. Por otro lado, valores más bajos permiten una mayor cantidad de divisiones, resultando en árboles más complejos. Ajustar `minsplit` permite controlar la granularidad de las divisiones en el árbol, asegurando que el modelo capture los patrones relevantes sin sobreajustarse a los datos de entrenamiento.
+
+#### Random Forest
+
+Random Forest opera creando una colección de árboles de decisión, cada uno entrenado con un subconjunto aleatorio del conjunto de datos y un subconjunto aleatorio de características. Este enfoque introduce dos tipos de aleatoriedad: aleatoriedad en las muestras y aleatoriedad en las características, lo que ayuda a reducir la varianza del modelo y mitigar el sobreajuste.En este estudio, se ha utilizado el paquete `randomForest` de R.
+
+Los principales hiperparámetros ajustados en este estudio han sido:
+
+- **`ntree_values`**: Este parámetro define el número de árboles en el bosque. Un mayor número de árboles generalmente mejora la precisión del modelo, ya que la predicción final se basa en la agregación de un mayor número de árboles, reduciendo así la varianza. Sin embargo, un número muy alto de árboles puede aumentar el tiempo de entrenamiento sin proporcionar mejoras significativas en el rendimiento. Ajustar el valor de `ntree` permite encontrar un equilibrio entre la precisión y la eficiencia computacional del modelo.
+
+- **`mtry_values`**: Este parámetro controla el número de características que se consideran para cada división en los árboles de decisión. Un valor más bajo de `mtry` puede reducir el riesgo de sobreajuste, ya que introduce más variabilidad entre los árboles individuales. Un valor más alto permite que cada árbol considere más características en cada división, lo que puede mejorar la precisión del modelo si las características adicionales son informativas. Ajustar `mtry` permite optimizar la capacidad del modelo para capturar las relaciones relevantes en los datos sin sobreajustarse.
+
+En resumen, Random Forest es un potente algoritmo de clasificación que combina las predicciones de múltiples árboles de decisión para mejorar la precisión y la robustez del modelo. La cuidadosa selección de los parámetros `ntree_values` y `mtry_values` asegura un modelo equilibrado que generaliza bien en nuevos datos, proporcionando predicciones fiables del estado PCR de los pacientes.
 
 #### K-Nearest Neighbours
 
-K-Nearest Neighbours (KNN) clasifica una muestra basada en las clases de sus $k$ vecinos más cercanos en el espacio de características. En este estudio, se ha utilizado el paquete `class` de R para implementar KNN, ajustando los parámetros $k$ y $l$ para optimizar la precisión del modelo en la predicción del estado PCR de los pacientes.
+K-Nearest Neighbours (KNN) clasifica una muestra basada en las clases de sus $k$ vecinos más cercanos en el espacio de características. En este estudio, se ha utilizado el paquete `class` de R para implementar KNN.
 
 KNN clasifica una muestra $x$ basándose en la mayoría de las clases de sus $k$ vecinos más cercanos, identificados utilizando una métrica de distancia. La distancia entre las muestras se calcula comúnmente usando la distancia euclidiana, pero se puede generalizar utilizando la distancia de Minkowski, definida como:
 
@@ -468,7 +490,7 @@ En resumen, KNN es un algoritmo intuitivo y efectivo para la clasificación, esp
 
 #### Support Vector Machine
 
-La Máquina de Vectores de Soporte, o, Support Vector Machine (SVM) es una técnica de clasificación que busca encontrar el hiperplano que mejor separa las clases en el espacio de características. En este estudio, se ha utilizado el paquete `e1071` de R para implementar SVM, ajustando los parámetros del kernel y el coste (C) para optimizar la precisión del modelo en la predicción del estado PCR de los pacientes.
+La Máquina de Vectores de Soporte, o, Support Vector Machine (SVM) es una técnica de clasificación que busca encontrar el hiperplano que mejor separa las clases en el espacio de características. En este estudio, se ha utilizado el paquete `e1071` de R para implementar SVM.
 
 SVM funciona proyectando los datos a un espacio de mayor dimensión donde se puede encontrar un hiperplano que maximiza el margen de separación entre las clases. El hiperplano se define por:
 
@@ -490,7 +512,7 @@ donde $\mathbf{w}$ es el vector de pesos y $b$ es el sesgo. El objetivo es encon
 
 #### Artificial Neural Networks
 
-Las Redes Neuronales Artificiales (ANN) son modelos de aprendizaje automático inspirados en la estructura y funcionamiento del cerebro humano. En este estudio, se ha utilizado la función `nnet` del paquete `nnet` de R para implementar un modelo de red neuronal artificial, optimizando los parámetros `size` y `decay` para mejorar la precisión en la predicción del estado PCR de los pacientes.
+Las Redes Neuronales Artificiales (ANN) son modelos de aprendizaje automático inspirados en la estructura y funcionamiento del cerebro humano. En este estudio, se ha utilizado la función `nnet` del paquete `nnet` de R para implementar un modelo de red neuronal artificial.
 
 Las redes neuronales consisten en una capa de entrada, una o más capas ocultas, y una capa de salida. Cada neurona en estas capas realiza una operación lineal seguida de una función de activación no lineal. En este estudio, la arquitectura del modelo se definirá principalmente por el número de neuronas en la capa oculta (`size`) y el método de regularización (`weight-decay`).
 
@@ -1738,7 +1760,463 @@ performance_adaboost_lasso <- evaluate_with_seeds_AdaBoost_stepAUC(
 load("RData_Files_Algorithms/AdaBoost_Lasso.RData")
 ```
 
-## Random Forest 
+## Random Forest
+
+### Aparente
+
+```{r, eval=FALSE}
+evaluate_apparent_performance_model_randomForest <- function(data, target_var, model_func, vars = NULL, threshold = 0.5) {
+  if (is.null(vars)) {
+    vars <- setdiff(names(data), target_var)
+  }
+  
+  data[[target_var]] <- factor(data[[target_var]], levels = c(0, 1))
+  formula <- as.formula(paste(target_var, "~", paste(vars, collapse = "+")))
+  
+  model <- model_func(formula, data)
+  predictions <- predict(model, newdata = data, type = "prob")[, 2]
+  
+  actual_classes <- data[[target_var]]
+  predicted_classes <- ifelse(predictions > threshold, 1, 0)
+  confusion_matrix <- table(predicted_classes, actual_classes)
+  
+  tp <- ifelse("1" %in% rownames(confusion_matrix) && "1" %in% colnames(confusion_matrix), confusion_matrix["1", "1"], 0)
+  tn <- ifelse("0" %in% rownames(confusion_matrix) && "0" %in% colnames(confusion_matrix), confusion_matrix["0", "0"], 0)
+  fp <- ifelse("1" %in% rownames(confusion_matrix) && "0" %in% colnames(confusion_matrix), confusion_matrix["1", "0"], 0)
+  fn <- ifelse("0" %in% rownames(confusion_matrix) && "1" %in% colnames(confusion_matrix), confusion_matrix["0", "1"], 0)
+  
+  accuracy <- (tp + tn) / (tp + tn + fp + fn)
+  precision <- ifelse(tp + fp > 0, tp / (tp + fp), 0)
+  recall <- ifelse(tp + fn > 0, tp / (tp + fn), 0)
+  f1_score <- ifelse(precision + recall > 0, 2 * (precision * recall) / (precision + recall), 0)
+  roc_obj <- pROC::roc(actual_classes, predictions)
+  
+  list(confusion_matrix = confusion_matrix, accuracy = accuracy, precision = precision, 
+       recall = recall, f1_score = f1_score, roc_curve = roc_obj)
+}
+
+rf_model <- function(formula, data) {
+  set.seed(90)
+  randomForest(formula = formula, data = data, ntree = 100, mtry = 2)
+}
+
+
+resultadosAparentesRF <- evaluate_apparent_performance_model_randomForest(data = data_factor, target_var = "PCR",
+                                                             model_func = rf_model,
+                                                             vars = ".",
+                                                             threshold = .35)
+```
+
+```{r, message=FALSE, warning=FALSE}
+load("RData_Files_Algorithms/RandomForest_Aparente.RData")
+```
+
+### Todas las Variables
+
+```{r, eval=FALSE}
+double_cross_validation_randomforest <- function(data, target_name, outer, inner, ntree_values, mtry_values, variables, threshold, seed) {
+  set.seed(seed)
+  performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
+                                    FP = integer(), FN = integer(), AUC = numeric(), 
+                                    Best_ntree = integer(), Best_mtry = integer(), stringsAsFactors = FALSE)
+  
+  inner_fold_metrics <- data.frame(Fold = integer(), Inner_Fold = integer(), 
+                                   TP = integer(), TN = integer(), FP = integer(), 
+                                   FN = integer(), AUC = numeric(), stringsAsFactors = FALSE)
+  
+  data[[target_name]] <- as.factor(data[[target_name]])
+  outer_folds <- createFolds(data[[target_name]], k = outer, list = TRUE, returnTrain = FALSE)
+  
+  for (outer_index in seq_along(outer_folds)) {
+    outer_train_data <- data[-outer_folds[[outer_index]], ]
+    outer_test_data <- data[outer_folds[[outer_index]], ]
+    
+    cat(sprintf("Outer Fold %d\n", outer_index))
+    cat("Training Data - Class 0: ", sum(outer_train_data[[target_name]] == "0"), "\n")
+    cat("Training Data - Class 1: ", sum(outer_train_data[[target_name]] == "1"), "\n")
+    cat("Testing Data - Class 0: ", sum(outer_test_data[[target_name]] == "0"), "\n")
+    cat("Testing Data - Class 1: ", sum(outer_test_data[[target_name]] == "1"), "\n")
+    
+    if (sum(outer_train_data[[target_name]] == "0") == 0 || sum(outer_train_data[[target_name]] == "1") == 0) {
+      cat("Skipping outer fold due to lack of class diversity\n")
+      next
+    }
+    
+    inner_folds <- createFolds(outer_train_data[[target_name]], k = inner, list = TRUE, returnTrain = FALSE)
+    best_model <- NULL
+    best_auc <- 0
+    best_ntree <- NULL
+    best_mtry <- NULL
+
+    grid <- expand.grid(ntree = ntree_values, mtry = mtry_values)
+    formula <- reformulate(variables, target_name)
+
+    for (params in 1:nrow(grid)) {
+      inner_auc <- numeric()
+
+      for (inner_index in seq_along(inner_folds)) {
+        inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
+        inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
+
+        if (sum(inner_train_data[[target_name]] == "0") == 0 || sum(inner_train_data[[target_name]] == "1") == 0) {
+          cat("Skipping inner fold due to lack of class diversity\n")
+          next
+        }
+
+        result <- tryCatch({
+          model <- randomForest(formula, data = inner_train_data, ntree = grid$ntree[params], mtry = grid$mtry[params])
+          
+          predictions <- predict(model, inner_test_data, type = "prob")[, 2]
+          roc_curve <- roc(inner_test_data[[target_name]], predictions)
+          inner_auc[inner_index] <- roc_curve$auc
+        }, error = function(e) {
+          cat("Error with parameters: ntree =", grid$ntree[params], ", mtry =", grid$mtry[params], "\n")
+          cat("Error message: ", e$message, "\n")
+          inner_auc[inner_index] <- 0
+        })
+      }
+
+      if (mean(inner_auc, na.rm = TRUE) > best_auc) {
+        best_auc <- mean(inner_auc, na.rm = TRUE)
+        best_model <- model
+        best_ntree <- grid$ntree[params]
+        best_mtry <- grid$mtry[params]
+      }
+    }
+
+    if (is.null(best_model)) {
+      cat("No valid model found for outer fold ", outer_index, "\n")
+      next
+    }
+
+    # Evaluar el mejor modelo en el validation split del inner loop 
+    inner_auc_vals <- numeric()
+    for (inner_index in seq_along(inner_folds)) {
+      inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
+      inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
+      
+      predictions <- predict(best_model, inner_test_data, type = "prob")[, 2]
+      roc_curve <- roc(inner_test_data[[target_name]], predictions)
+      inner_auc_vals[inner_index] <- roc_curve$auc
+
+      pred_class <- ifelse(predictions > threshold, "1", "0")
+      confusion <- table(Actual = inner_test_data[[target_name]], Predicted = pred_class)
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+      auc <- roc_curve$auc
+      
+      inner_metrics <- setNames(c(outer_index, inner_index, TP, TN, FP, FN, auc), names(inner_fold_metrics))
+      inner_fold_metrics <- rbind(inner_fold_metrics, as.data.frame(t(inner_metrics)))
+    }
+
+    best_model <- randomForest(formula, data = outer_train_data, ntree = best_ntree, mtry = best_mtry)
+    predictions <- predict(best_model, outer_test_data, type = "prob")[, 2]
+    pred_class <- ifelse(predictions > threshold, "1", "0")
+    confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
+
+    if (nrow(confusion) < 2 || ncol(confusion) < 2) {
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+    } else {
+      TP <- confusion[2, 2]
+      TN <- confusion[1, 1]
+      FP <- confusion[1, 2]
+      FN <- confusion[2, 1]
+    }
+    auc <- roc(outer_test_data[[target_name]], predictions)$auc
+
+    metrics <- setNames(c(outer_index, TP, TN, FP, FN, auc, best_ntree, best_mtry), names(performance_metrics))
+    performance_metrics <- rbind(performance_metrics, as.data.frame(t(metrics)))
+  }
+
+  return(list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics))
+}
+
+evaluate_with_seeds_RandomForest_TodasVariables_Asociacion <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, ntree_values , mtry_values) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed,
+                                   ntree_values = ntree_values,
+                                   mtry_values = mtry_values)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+  }
+
+performance_RandomForest_todasvariables <- evaluate_with_seeds_RandomForest_TodasVariables_Asociacion(
+  evaluation_function = double_cross_validation_randomforest,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  ntree_values = c(100, 200, 300, 400, 500),###
+  mtry_values  = c(floor(sqrt(length(todas_variables_factor))), 
+                   floor(sqrt(length(todas_variables_factor))) - 1, 
+                   floor(sqrt(length(todas_variables_factor))) + 1),
+  vars = todas_variables_factor,
+  threshold = .35,
+  seeds = seeds
+)
+```
+
+```{r, message=FALSE, warning=FALSE}
+load("RData_Files_Algorithms/RandomForest_TodasVariables.RData")
+```
+
+### Filtrado (Asociación)
+
+```{r, eval=FALSE}
+performance_RandomForest_Aparente <- evaluate_with_seeds_RandomForest_TodasVariables_Asociacion(
+  evaluation_function = double_cross_validation_randomforest,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  ntree_values = c(100, 200, 300, 400, 500),###
+  mtry_values  = c(floor(sqrt(length(asociacion))), 
+                   floor(sqrt(length(asociacion))) - 1, 
+                   floor(sqrt(length(asociacion))) + 1),
+  vars = asociacion,
+  threshold = .35,
+  seeds = seeds
+)
+```
+
+```{r, message=FALSE, warning=FALSE}
+load("RData_Files_Algorithms/RandomForest_Asociacion.RData")
+```
+### Wrapped (StepAUC)
+
+```{r, eval=FALSE}
+double_cross_validation_randomforest_stepAUC <- function(data, target_name, outer, inner, ntree_values, mtry_values, variables, threshold, seed) {
+  set.seed(seed)
+  performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
+                                    FP = integer(), FN = integer(), AUC = numeric(),
+                                    Best_Ntree = integer(), Best_Mtry = integer(), 
+                                    Best_Variables = character(), stringsAsFactors = FALSE)
+  
+  inner_fold_metrics <- data.frame(Fold = integer(), Inner_Fold = integer(), 
+                                   TP = integer(), TN = integer(), FP = integer(), 
+                                   FN = integer(), AUC = numeric(), stringsAsFactors = FALSE)
+  
+  data[[target_name]] <- as.factor(data[[target_name]])
+  outer_folds <- createFolds(data[[target_name]], k = outer)
+  
+  for (outer_index in seq_along(outer_folds)) {
+    outer_train_data <- data[-outer_folds[[outer_index]], ]
+    outer_test_data <- data[outer_folds[[outer_index]], ]
+    
+    cat(sprintf("Outer Fold %d\n", outer_index))
+    cat("Training Data - Class 0: ", sum(outer_train_data[[target_name]] == "0"), "\n")
+    cat("Training Data - Class 1: ", sum(outer_train_data[[target_name]] == "1"), "\n")
+    cat("Testing Data - Class 0: ", sum(outer_test_data[[target_name]] == "0"), "\n")
+    cat("Testing Data - Class 1: ", sum(outer_test_data[[target_name]] == "1"), "\n")
+    
+    inner_folds <- createFolds(outer_train_data[[target_name]], k = inner)
+    best_model <- NULL
+    best_auc <- 0
+    best_ntree <- NULL
+    best_mtry <- NULL
+    best_vars <- variables
+    
+    grid <- expand.grid(ntree = ntree_values, mtry = mtry_values)
+    
+    stepAUC <- function(vars, data, target_name, grid, inner_folds) {
+      current_vars <- vars
+      best_inner_auc <- 0
+      best_inner_model <- NULL
+      best_inner_ntree <- NULL
+      best_inner_mtry <- NULL
+      best_inner_vars <- current_vars
+      improved <- TRUE
+    
+      while (improved && length(current_vars) > 1) {
+        improved <- FALSE
+        best_auc_in_step <- best_inner_auc
+    
+        for (var in current_vars) {
+          temp_vars <- setdiff(current_vars, var)
+          inner_auc <- numeric()
+    
+          for (params in 1:nrow(grid)) {
+            auc_vals <- numeric()
+    
+            for (inner_index in seq_along(inner_folds)) {
+              inner_train_data <- data[-inner_folds[[inner_index]], ]
+              inner_test_data <- data[inner_folds[[inner_index]], ]
+    
+              result <- tryCatch({
+                model <- randomForest(as.formula(paste(target_name, "~", paste(temp_vars, collapse = "+"))),
+                                      data = inner_train_data, ntree = grid$ntree[params], mtry = grid$mtry[params])
+    
+                predictions <- predict(model, inner_test_data, type = "prob")[, 2]
+                roc_curve <- roc(inner_test_data[[target_name]], predictions)
+                auc_vals[inner_index] <- roc_curve$auc
+    
+              }, error = function(e) {
+                cat("Error with variables:", paste(temp_vars, collapse = ", "), "\n")
+                auc_vals[inner_index] <- 0
+              })
+            }
+    
+            if (mean(auc_vals, na.rm = TRUE) > best_auc_in_step) {
+              best_auc_in_step <- mean(auc_vals, na.rm = TRUE)
+              best_inner_model <- model
+              best_inner_ntree <- grid$ntree[params]
+              best_inner_mtry <- grid$mtry[params]
+              best_inner_vars <- temp_vars
+              improved <- TRUE
+            }
+          }
+        }
+    
+        if (improved) {
+          current_vars <- best_inner_vars
+          best_inner_auc <- best_auc_in_step
+          cat("Vars improved: ", paste(current_vars, collapse=", "), "\n")
+          cat("AUC: ", paste(best_inner_auc), "\n")
+        }
+      }
+    
+      list(model = best_inner_model, auc = best_inner_auc, 
+           ntree = best_inner_ntree, mtry = best_inner_mtry, 
+           vars = best_inner_vars)
+    }
+
+    
+    best_result <- stepAUC(variables, outer_train_data, target_name, grid, inner_folds)
+    best_model <- best_result$model
+    best_auc <- best_result$auc
+    best_ntree <- best_result$ntree
+    best_mtry <- best_result$mtry
+    best_vars <- best_result$vars
+
+    # Evaluar el mejor modelo en el validation split del inner loop
+    inner_auc_vals <- numeric()
+    for (inner_index in seq_along(inner_folds)) {
+      inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
+      inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
+    
+      predictions <- predict(best_model, inner_test_data, type = "prob")[, 2]
+      roc_curve <- roc(inner_test_data[[target_name]], predictions)
+      inner_auc_vals[inner_index] <- roc_curve$auc
+    
+      pred_class <- ifelse(predictions > threshold, "1", "0")
+      confusion <- table(Actual = inner_test_data[[target_name]], Predicted = pred_class)
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+      auc <- roc_curve$auc
+    
+      inner_metrics <- setNames(c(outer_index, inner_index, TP, TN, FP, FN, auc), names(inner_fold_metrics))
+      inner_fold_metrics <- rbind(inner_fold_metrics, as.data.frame(t(inner_metrics)))
+    }
+
+    
+    best_inner_auc <- mean(inner_auc_vals, na.rm = TRUE)
+    # Reentrenar el mejor modelo con todos los datos de outer_train_data
+    best_model <- randomForest(as.formula(paste(target_name, "~", paste(best_vars, collapse = "+"))),
+                    data = outer_train_data, ntree = best_ntree, mtry = best_mtry)
+
+    predictions <- predict(best_model, outer_test_data, type = "prob")[, 2]
+    pred_class <- ifelse(predictions > threshold, "1", "0")
+    confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
+    
+    if (nrow(confusion) < 2 || ncol(confusion) < 2) {
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+    } else {
+      TP <- confusion[2, 2]
+      TN <- confusion[1, 1]
+      FP <- confusion[1, 2]
+      FN <- confusion[2, 1]
+    }
+    auc <- roc(outer_test_data[[target_name]], predictions)$auc
+    
+    metrics <- setNames(c(outer_index, TP, TN, FP, FN, auc, 
+                          best_ntree, best_mtry, paste(best_vars, collapse = ",")), 
+                        names(performance_metrics))
+    performance_metrics <- rbind(performance_metrics, as.data.frame(t(metrics)))
+    
+    cat("Performance:", paste(performance_metrics))
+    cat(sprintf("Confusion Matrix for Fold %d:\n", outer_index))
+    print(confusion)
+    cat(sprintf("Metrics for Fold %d:\n", outer_index))
+    cat(sprintf("TP: %d, TN: %d, FP: %d, FN: %d, AUC: %f, Best Ntree: %d, Best Mtry: %d, Best Variables: %s\n",
+                TP, TN, FP, FN, auc, best_ntree, best_mtry, paste(best_vars, collapse = ",")))
+  }
+  
+  return(list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics))
+}
+
+evaluate_with_seeds_RandomForest_StepAUC <- 
+  function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, ntree_values, mtry_values) {
+  results_list <- list()
+
+  for (seed in seeds) {
+    set.seed(seed)
+    cat("Evaluating with seed:", seed, "\n")
+
+    results <- evaluation_function(data = data, 
+                                   target_name = target_var, 
+                                   variables = vars, 
+                                   threshold = threshold, 
+                                   outer = outer, 
+                                   inner = inner, 
+                                   seed = seed,
+                                   ntree_values = ntree_values,
+                                   mtry_values = mtry_values)
+    results_list[[paste0("seed_", seed)]] <- results
+  }
+
+  return(results_list)
+  }
+
+performance_RandomForest_StepAUC <- evaluate_with_seeds_RandomForest_StepAUC(
+  evaluation_function = double_cross_validation_randomforest_stepAUC,
+  data = data_factor,
+  outer = 5,
+  inner = 2,
+  target_var = "PCR",
+  ntree_values = c(100, 200, 300, 400, 500),
+  mtry_values  = c(floor(sqrt(length(todas_variables_factor))), 
+                   floor(sqrt(length(todas_variables_factor))) - 1, 
+                   floor(sqrt(length(todas_variables_factor))) + 1),
+  vars = todas_variables_factor,
+  threshold = .35,
+  seeds = seeds
+)
+
+```
+
+```{r, message=FALSE, warning=FALSE}
+load("RData_Files_Algorithms/RandomForest_StepAUC.RData")
+```
+
+### Embedded (Lasso)
+
+Debido a dificultades del código, no se han podido obtener resultados del método de selección de variables **embedded** con el algoritmo *Lasso* para al modelo de Árbol de Decisión (DT).  
+
+## Decision Tree
 
 ### Aparente
 
@@ -1774,20 +2252,20 @@ evaluate_aparent_performance_model_rpart <- function(data, target_var, model_fun
 }
 
 
-rf_model <- function(formula, data) {
+dt_model <- function(formula, data) {
   set.seed(90)
   rpart(formula = formula, data = data, method = "class", control = rpart.control(minsplit = 2, cp = 0))
 }
 
 
-resultadosAparentesRF <- evaluate_aparent_performance_model_rpart(data = data_factor, target_var = "PCR",
-                                                             model_func = rf_model,
+resultadosAparentesDT <- evaluate_aparent_performance_model_rpart(data = data_factor, target_var = "PCR",
+                                                             model_func = dt_model,
                                                              vars = ".",
                                                              threshold = .35)
 ```
 
 ```{r, message=FALSE, warning=FALSE}
-load("RData_Files_Algorithms/RandomForest_Aparente.RData")
+load("RData_Files_Algorithms/DecisionTree_Aparente.RData")
 ```
 
 ### Todas las Variables
@@ -1798,6 +2276,10 @@ double_cross_validation_rpart <- function(data, target_name, outer, inner, cp_va
   performance_metrics <- data.frame(Fold = integer(), TP = integer(), TN = integer(),
                                     FP = integer(), FN = integer(), AUC = numeric(),
                                     Best_cp = numeric(), Best_minsplit = integer(), stringsAsFactors = FALSE)
+  
+  inner_fold_metrics <- data.frame(Fold = integer(), Inner_Fold = integer(), 
+                                   TP = integer(), TN = integer(), FP = integer(), 
+                                   FN = integer(), AUC = numeric(), stringsAsFactors = FALSE)
   
   data[[target_name]] <- as.factor(data[[target_name]])
   outer_folds <- createFolds(data[[target_name]], k = outer)
@@ -1844,8 +2326,30 @@ double_cross_validation_rpart <- function(data, target_name, outer, inner, cp_va
       }
     }
     
+    # Evaluar el mejor modelo en el validation split del inner loop 
+    inner_auc_vals <- numeric()
+    for (inner_index in seq_along(inner_folds)) {
+      inner_train_data <- outer_train_data[-inner_folds[[inner_index]], ]
+      inner_test_data <- outer_train_data[inner_folds[[inner_index]], ]
+      
+      predictions <- predict(best_model, inner_test_data, type = "prob")[, 2]
+      roc_curve <- roc(inner_test_data[[target_name]], predictions)
+      inner_auc_vals[inner_index] <- roc_curve$auc
+
+      pred_class <- ifelse(predictions > threshold, 1, 0)
+      confusion <- table(Actual = inner_test_data[[target_name]], Predicted = pred_class)
+      TP <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 2, confusion[2, 2], 0)
+      TN <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 1, confusion[1, 1], 0)
+      FP <- ifelse(nrow(confusion) >= 1 && ncol(confusion) >= 2, confusion[1, 2], 0)
+      FN <- ifelse(nrow(confusion) >= 2 && ncol(confusion) >= 1, confusion[2, 1], 0)
+      auc <- roc_curve$auc
+      
+      inner_metrics <- setNames(c(outer_index, inner_index, TP, TN, FP, FN, auc), names(inner_fold_metrics))
+      inner_fold_metrics <- rbind(inner_fold_metrics, as.data.frame(t(inner_metrics)))
+    }
+    
     best_model <- rpart(formula = as.formula(paste(target_name, "~", paste(variables, collapse = "+"))),
-                       data = outer_test_data, control = rpart.control(cp = best_cp, minsplit = best_minsplit))
+                       data = outer_train_data, control = rpart.control(cp = best_cp, minsplit = best_minsplit))
     
     predictions <- predict(best_model, outer_test_data, type = "prob")[, 2]
     pred_class <- ifelse(predictions > threshold, 1, 0)  # Asignar clases basadas en umbral
@@ -1868,9 +2372,11 @@ double_cross_validation_rpart <- function(data, target_name, outer, inner, cp_va
     performance_metrics <- rbind(performance_metrics, as.data.frame(t(metrics)))
   }
   
-  return(performance_metrics)
+  return(list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics))
 }
-evaluate_with_seeds_RandomForest_TodasVariables_Asociacion <- 
+
+
+evaluate_with_seeds_DecisionTree_TodasVariables_Asociacion <- 
   function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, cp_values, minsplit_values) {
   results_list <- list()
 
@@ -1893,7 +2399,7 @@ evaluate_with_seeds_RandomForest_TodasVariables_Asociacion <-
   return(results_list)
   }
 
-performance_rpart_todasvariables <- evaluate_with_seeds_RandomForest_TodasVariables_Asociacion(
+performance_rpart_todasvariables <- evaluate_with_seeds_DecisionTree_TodasVariables_Asociacion(
   evaluation_function = double_cross_validation_rpart,
   data = data_factor,
   outer = 5,
@@ -1908,13 +2414,13 @@ performance_rpart_todasvariables <- evaluate_with_seeds_RandomForest_TodasVariab
 ```
 
 ```{r, message=FALSE, warning=FALSE}
-load("RData_Files_Algorithms/RandomForest_TodasVariables.RData")
+load("RData_Files_Algorithms/DecisionTree_TodasVariables.RData")
 ```
 
 ### Filtrado (Asociación)
 
 ```{r, eval=FALSE}
-performance_rpart_Asociacion <- evaluate_with_seeds_RandomForest_TodasVariables_Asociacion(
+performance_rpart_Asociacion <- evaluate_with_seeds_DecisionTree_TodasVariables_Asociacion(
   evaluation_function = double_cross_validation_rpart,
   data = data_factor,
   outer = 5,
@@ -1929,7 +2435,7 @@ performance_rpart_Asociacion <- evaluate_with_seeds_RandomForest_TodasVariables_
 ```
 
 ```{r, message=FALSE, warning=FALSE}
-load("RData_Files_Algorithms/RandomForest_Asociacion.RData")
+load("RData_Files_Algorithms/DecisionTree_Asociacion.RData")
 ```
 ### Wrapped (StepAUC)
 
@@ -2098,7 +2604,7 @@ double_cross_validation_rpart_stepAUC <- function(data, target_name, outer, inne
   return(list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics))
 }
 
-evaluate_with_seeds_RandomForest_StepAUC <- 
+evaluate_with_seeds_DecisionTree_StepAUC <- 
   function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, cp_values, minsplit_values) {
   results_list <- list()
 
@@ -2113,16 +2619,16 @@ evaluate_with_seeds_RandomForest_StepAUC <-
                                    outer = outer, 
                                    inner = inner, 
                                    seed = seed,
-                                   cp_values = cp_values,
-                                   minsplit_values = minsplit_values)
+                                   cps = cp_values,
+                                   minsplits = minsplit_values)
     results_list[[paste0("seed_", seed)]] <- results
   }
 
   return(results_list)
   }
 
-performance_rpart_StepAUC <- evaluate_with_seeds_RandomForest_StepAUC(
-  evaluation_function = double_cross_validation_rpart,
+performance_rpart_StepAUC <- evaluate_with_seeds_DecisionTree_StepAUC(
+  evaluation_function = double_cross_validation_rpart_stepAUC,
   data = data_factor,
   outer = 5,
   inner = 2,
@@ -2133,10 +2639,11 @@ performance_rpart_StepAUC <- evaluate_with_seeds_RandomForest_StepAUC(
   threshold = .35,
   seeds = seeds
 )
+performance_rpart_StepAUC
 ```
 
 ```{r, message=FALSE, warning=FALSE}
-load("RData_Files_Algorithms/RandomForest_StepAUC.RData")
+load("RData_Files_Algorithms/DecisionTree_StepAUC.RData")
 ```
 
 ### Embedded (Lasso)
@@ -2299,7 +2806,9 @@ double_cross_validation_rpart_Lasso <- function(data, target_name, outer, inner,
     
     best_inner_auc <- mean(inner_auc_vals, na.rm = TRUE)
     cat("Best inner AUC: ", best_inner_auc, "\n")
-    
+    best_model <- rpart(as.formula(paste(target_name, "~", paste(best_vars, collapse = "+"))),
+                        data = outer_train_data, method = "class", 
+                        control = rpart.control(cp = best_cp, minsplit = best_minsplit))
     predictions <- predict(best_model, outer_test_data, type = "prob")[,2]
     pred_class <- ifelse(predictions > threshold, 1, 0)  # Asignar clases basadas en umbral
     confusion <- table(Actual = outer_test_data[[target_name]], Predicted = pred_class)
@@ -2333,7 +2842,8 @@ double_cross_validation_rpart_Lasso <- function(data, target_name, outer, inner,
   list(performance_metrics = performance_metrics, inner_fold_metrics = inner_fold_metrics)
 }
 
-evaluate_with_seeds_RandomForest_lasso <- 
+
+evaluate_with_seeds_DecisionTree_lasso <- 
   function(evaluation_function, data, target_var, vars, threshold, seeds, outer, inner, cp_values, minsplit_values) {
   results_list <- list()
 
@@ -2356,7 +2866,7 @@ evaluate_with_seeds_RandomForest_lasso <-
   return(results_list)
   }
 
-performance_rpart_lasso <- evaluate_with_seeds_RandomForest_lasso(
+performance_rpart_lasso <- evaluate_with_seeds_DecisionTree_lasso(
   evaluation_function = double_cross_validation_rpart_Lasso,
   data = data_factor,
   outer = 5,
@@ -2368,10 +2878,11 @@ performance_rpart_lasso <- evaluate_with_seeds_RandomForest_lasso(
   threshold = .35,
   seeds = seeds
 )
+
 ```
 
 ```{r, message=FALSE, warning=FALSE}
-load("RData_Files_Algorithms/RandomForest_Lasso.RData")
+load("RData_Files_Algorithms/DecisionTree_Lasso.RData")
 ```
 
 ## K-Nearest Neighbours 
@@ -4406,7 +4917,7 @@ load("RData_Files_Algorithms/ANN_Lasso.RData")
 # e inner_fold_metrics de cada semilla en un solo dataframe, añadiendo una columna 
 # "semilla" para diferenciar cada uno
 
-process_experiment_data <- function(raw_data) {
+process_experiment_data <- function(raw_data, hyperparameters) {
   # Combinar performance_metrics en un solo dataframe
   performance_metrics <- bind_rows(
     lapply(names(raw_data), function(seed) {
@@ -4424,9 +4935,12 @@ process_experiment_data <- function(raw_data) {
            TN = as.numeric(TN),
            FP = as.numeric(FP),
            FN = as.numeric(FN),
-           Best_Size = as.numeric(Best_Size),
-           Best_Decay = as.numeric(Best_Decay),
            Seed = as.factor(seed))
+  
+  # Convertir los hiperparámetros relevantes a tipo numérico
+  for (param in hyperparameters) {
+    performance_metrics[[param]] <- as.numeric(performance_metrics[[param]])
+  }
   
   # Combinar inner_fold_metrics en un solo dataframe
   inner_fold_metrics <- bind_rows(
@@ -4458,12 +4972,234 @@ process_experiment_data <- function(raw_data) {
 
 
 
+```{r}
+# ANN
+hyperparameters_ann <- c("Best_Size", "Best_Decay")
+
+ANN_TodasVariables_Metrics <- process_experiment_data(performance_ANN_todasvariables, hyperparameters_ann)
+ANN_Asociacion_Metrics <- process_experiment_data(performance_ANN_asociacion, hyperparameters_ann)
+ANN_StepAUC_Metrics <- process_experiment_data(performance_ANN_stepAUC, hyperparameters_ann)
+ANN_Lasso_Metrics <- process_experiment_data(performance_ANN_lasso, hyperparameters_ann)
+
+# SVM
+hyperparameters_svm <- c("Best_Cost", "Best_Kernel")
+
+SVM_TodasVariables_Metrics <- process_experiment_data(performance_SVM_todasvariables, hyperparameters_svm)
+SVM_Asociacion_Metrics <- process_experiment_data(performance_svm_asociacion,hyperparameters_svm)
+SVM_StepAUC_Metrics <- process_experiment_data(performance_SVM_stepauc, hyperparameters_svm)
+SVM_Lasso_Metrics <- process_experiment_data(performance_SVM_lasso, hyperparameters_svm)
+
+
+# KNN
+hyperparameters_knn <- c("Best_k", "Best_l")
+
+KNN_TodasVariables_Metrics <- process_experiment_data(performance_knn_todasvariables, hyperparameters_knn)
+KNN_Asociacion_Metrics <- process_experiment_data(performance_knn_Asociacion, hyperparameters_knn)
+KNN_StepAUC_Metrics <- process_experiment_data(performance_knn_stepauc, hyperparameters_knn)
+KNN_Lasso_Metrics <- process_experiment_data(performance_knn_lasso, hyperparameters_knn)
+
+
+# RandomForest
+hyperparameters_RandomForest <- c("Best_ntree", "Best_mtry")
+
+RandomForest_TodasVariables_Metrics <- process_experiment_data(performance_RandomForest_todasvariables, hyperparameters_RandomForest)
+RandomForest_Asociacion_Metrics <- process_experiment_data(performance_RandomForest_Asociacion, hyperparameters_RandomForest)
+RandomForest_StepAUC_Metrics <- process_experiment_data(performance_RandomForest_StepAUC, c("Best_Ntree", "Best_Mtry"))
+
+RandomForest_StepAUC_Metrics$performance_metrics <- RandomForest_StepAUC_Metrics$performance_metrics %>% rename(Best_ntree = Best_Ntree)
+RandomForest_StepAUC_Metrics$performance_metrics <- RandomForest_StepAUC_Metrics$performance_metrics %>% rename(Best_mtry = Best_Mtry)
+
+
+# NaiveBayes
+hyperparameters_NaiveBayes <- c()
+
+NaiveBayes_TodasVariables_Metrics <- process_experiment_data(performance_naiveBayes_todasVariables, hyperparameters_NaiveBayes)
+NaiveBayes_Asociacion_Metrics <- process_experiment_data(performance_naiveBayes_Asociacion, hyperparameters_NaiveBayes)
+NaiveBayes_StepAUC_Metrics <- process_experiment_data(performance_naiveBayes_stepAUC, hyperparameters_NaiveBayes)
+NaiveBayes_Lasso_Metrics <- process_experiment_data(performance_naiveBayes_lasso, hyperparameters_NaiveBayes)
+
+
+# AdaBoost
+hyperparameters_AdaBoost <- c("Best_Iteration")
+
+AdaBoost_TodasVariables_Metrics <- process_experiment_data(performance_adaboost_todasvariables, hyperparameters_AdaBoost)
+AdaBoost_Asociacion_Metrics <- process_experiment_data(performance_adaboost_Asociacion, hyperparameters_AdaBoost)
+AdaBoost_StepAUC_Metrics <- process_experiment_data(performance_adaboost_stepAUC, c("Best_Iterations"))
+AdaBoost_Lasso_Metrics <- process_experiment_data(performance_adaboost_lasso, hyperparameters_AdaBoost)
+
+AdaBoost_StepAUC_Metrics$performance_metrics <- AdaBoost_StepAUC_Metrics$performance_metrics %>% rename(Best_Iteration = Best_Iterations)
+
+# RPart
+hyperparameters_RPart <- c("Best_cp", "Best_minsplit")
+
+RPart_TodasVariables_Metrics <- process_experiment_data(performance_rpart_todasvariables, hyperparameters_RPart)
+RPart_Asociacion_Metrics <- process_experiment_data(performance_rpart_Asociacion, hyperparameters_RPart)
+RPart_StepAUC_Metrics <- process_experiment_data(performance_rpart_StepAUC, c("Best_CP", "Best_Minsplit"))
+RPart_Lasso_Metrics <- process_experiment_data(performance_rpart_lasso, hyperparameters_RPart)
+
+RPart_StepAUC_Metrics$performance_metrics <- RPart_StepAUC_Metrics$performance_metrics %>% rename(Best_cp = Best_CP)
+RPart_StepAUC_Metrics$performance_metrics <- RPart_StepAUC_Metrics$performance_metrics %>% rename(Best_minsplit = Best_Minsplit)
+
+```
+
+
+El primer paso que se seguirá consiste en estandarizar los datos de los experimentos realizados en el apartado `Resultados` de tal forma que tengamos un único objeto `data.frame` por cada método de selección de variables. Este objeto `data.frame` contentrá métricas de rendimiento del modelo (TP, TN, AUC, etc.), las variables seleccionadas por el método aplicado y los hiperparámetros que han dado lugar al mejor rendimiento del modelo, estos datos se repiten por cada outer fold, por cada semilla aplicada, de tal forma que, como hemos aplicado 5 semillas (`27, 3, 123, 50, 90`), y hemos realizado una doble validación cruzada 5x2, tendremos un `data.frame` de 25 filas por cada método de selección de variables aplicado. Por otra parte, también se han estandarizado de la misma forma las métricas de rendmiento de la evaluación del mejor modelo encontrado en los folds internos con los conjuntos de validación de los folds internos. Estos datos servirán para validar que no haya habido sobre entrenamientos.
+
+A continuación se muestra una porción de cada uno de estos `data.frame`:
+
+::: {.panel-tabset}
+
+## Conjunto `performance_metrics` de los Folds Externos
+
+Se muestra el `data.frame` generado con los datos de rendimiento para los folds externos por semillas y folds para el método wrapped *StepAUC* para las redes de neuronas artificiales.
 
 ```{r}
+knitr::kable(head(ANN_StepAUC_Metrics$performance_metrics, 10))
+```
 
+
+## Conjunto `inner_performance` de los Folds Internos
+
+Se muestra el `data.frame` generado con los datos de rendimiento para los folds iternos por semillas y folds para el método wrapped *StepAUC* para las redes de neuronas artificiales.
+
+```{r}
+knitr::kable(head(ANN_StepAUC_Metrics$inner_fold_metrics, 15))
+```
+
+
+
+:::
+
+
+
+## Estabilidad de AUC entre Folds
+
+Esta sección se dedica al estudio de la estabilidad de las métricas de rendimiento para todos los modelos. Una de las principales características deseadas en un modelo de Aprendizaje Automático es la robustez en sus predicciones. Un modelo puede alcanzar un AUC máximo alto; sin embargo, si la varianza del AUC correspondiente a sus predicciones es muy alta, esto indica que el modelo es demasiado sensible a los datos de entrada, lo que podría resultar en predicciones inesperadas.
+
+Para abordar esta cuestión, se llevará a cabo un estudio comparativo para cada método de selección de variables utilizado por cada modelo, considerando las diferentes semillas y folds externos aplicados en la validación interna.
+
+Un modelo será considerado óptimo en esta sección si logra un alto AUC medio y si la variabilidad de sus AUC en función de la semilla y el fold es baja. Además, se evaluará si todos los métodos de selección de variables muestran un patrón consistente de AUC a lo largo de los diferentes folds, independientemente de la semilla. Esto indicaría que las fluctuaciones observadas se deben a la divisiones de los datos y no a la estructura del modelo, señalando una limitación impuesta por las muestras utilizadas.
+
+A continuación, se comentan las gráficas que serán generadas para el estudio comparativo 
+
+::: {.panel-tabset}
+
+## AUC Medio entre Inner Folds y Outer Folds
+
+El objetivo del gráfico comparativo del AUC medio de los inner folds y los outer folds es visualizar y comparar el rendimiento del modelo durante el proceso de validación cruzada. Específicamente, el gráfico de barras muestra los valores promedio del AUC tanto para los inner folds como para los outer folds, agrupados por fold. Al hacerlo, permite evaluar si el rendimiento del modelo es consistente entre las dos fases de validación y detectar posibles discrepancias o sobreajustes. La visualización ayuda a entender cómo el modelo generaliza a datos no vistos y proporciona una medida de estabilidad y confianza en el rendimiento del modelo.
+
+```{r}
+# Gráfico de barras comparativo del AUC medio de los inner folds y el AUC medio de los outer folds
+generate_inner_outer_auc_comparison <- function(inner_fold_metrics, outer_fold_metrics) {
+  # Calcular AUC medio por fold para inner folds
+  mean_inner_auc <- inner_fold_metrics %>%
+    group_by(Fold) %>%
+    summarize(mean_AUC_inner = mean(AUC, na.rm = TRUE))
+  
+  # Calcular AUC medio por fold para outer folds
+  mean_outer_auc <- outer_fold_metrics %>%
+    group_by(Fold) %>%
+    summarize(mean_AUC_outer = mean(AUC, na.rm = TRUE))
+  
+  # Unir los dataframes por Fold
+  comparison_data <- merge(mean_inner_auc, mean_outer_auc, by = "Fold")
+  
+  # Crear la gráfica de barras comparativa
+  fig <- plot_ly(data = comparison_data, x = ~Fold) %>%
+    add_trace(
+      y = ~mean_AUC_inner, 
+      type = 'bar', 
+      name = 'AUC Medio Inner Folds',
+      marker = list(color = 'blue')
+    ) %>%
+    add_trace(
+      y = ~mean_AUC_outer, 
+      type = 'bar', 
+      name = 'AUC Medio Outer Folds',
+      marker = list(color = 'red')
+    ) %>%
+    layout(
+      title = 'Comparación de AUC Medio: Inner Folds vs Outer Folds',
+      xaxis = list(title = 'Fold'),
+      yaxis = list(title = 'AUC Medio', range = c(0, 1)),
+      barmode = 'group'
+    )
+  
+  return(fig)
+}
+
+```
+
+## AUC Medio por Outer Fold
+
+El objetivo de la gráfica de violín del AUC medio por outer fold es proporcionar una visualización clara y detallada de la distribución del AUC para cada fold, distinguiendo los resultados por diferentes semillas de validación. Esta visualización es útil para detectar si hay algún fold específico que muestra una mayor variabilidad o si el rendimiento del modelo es consistentemente estable a través de todos los folds y semillas. Además, los elementos de la gráfica de violín, como la línea de la media y los puntos de datos individuales, facilitan la comprensión de la distribución del AUC y de los posibles outliers en los resultados.
+
+```{r}
+#  Gráfico de violín del AUC medio por outer fold con colores distintos para cada fold
+generate_outer_auc_violin_plot <- function(outer_fold_metrics) {
+  # Colores para cada fold
+  colors <- RColorBrewer::brewer.pal(n = length(unique(outer_fold_metrics$Fold)), name = "Set1")
+  
+  # Crear la gráfica de violín
+  fig <- plot_ly(data = outer_fold_metrics, y = ~AUC, x = ~factor(Fold), type = 'violin', 
+                 box = list(visible = TRUE), meanline = list(visible = TRUE), points = 'all', spanmode = 'hard',
+                 color = ~factor(Fold), colors = colors) %>%
+    layout(
+      title = 'Distribución del AUC por Outer Fold',
+      xaxis = list(title = 'Fold'),
+      yaxis = list(title = 'AUC')
+    )
+  
+  return(fig)
+}
+```
+
+## Comparativa entre los métodos de Selección de Variables 
+
+El objetivo de esta gráfica 3D es comparar la eficacia de diferentes métodos de selección de características (Todas Variables, Asociación, StepAUC y Lasso) en términos de su rendimiento medido por el AUC (Area Under the Curve). La visualización representa los resultados de múltiples ejecuciones (diferentes semillas) y los pliegues (folds) de validación cruzada para cada método. Cada punto en la gráfica indica el AUC obtenido en un pliegue específico para una semilla dada, y estos puntos se conectan con líneas para mostrar la continuidad dentro del mismo método y semilla. Los diferentes métodos se distinguen por colores, y en la leyenda se muestra el AUC medio global para cada método, proporcionando una comparación clara y visual de cómo cada método performa en promedio y cómo varía su rendimiento a través de diferentes pliegues y ejecuciones. Esto facilita la identificación de métodos consistentes y estables, así como aquellos que pueden necesitar ajustes adicionales.
+
+```{r}
+generate_combined_auc_3d_plot <- function(dataframes, names) {
+  # Definir los colores para cada dataframe
+  colors <- brewer.pal(n = length(dataframes), name = "Set1")
+  
+  # Calcular el AUC promedio global para cada dataframe
+  mean_aucs <- sapply(dataframes, function(df) mean(df$AUC, na.rm = TRUE))
+  
+  # Crear las trazas 3D para cada dataframe y semilla
+  fig <- plot_ly()
+  
+  for (i in seq_along(dataframes)) {
+    df <- dataframes[[i]]
+    unique_seeds <- unique(df$Seed)
+    for (seed in unique_seeds) {
+      seed_data <- df %>% filter(Seed == seed)
+      fig <- fig %>%
+        add_trace(data = seed_data, x = ~Fold, y = ~Seed, z = ~AUC, type = 'scatter3d', mode = 'lines+markers',
+                  line = list(color = colors[i]), marker = list(size = 5, color = colors[i]),
+                  showlegend = ifelse(seed == unique_seeds[1], TRUE, FALSE),
+                  name = ifelse(seed == unique_seeds[1], paste(names[i], "- AUC medio global:", round(mean_aucs[i], 3)), ""))
+    }
+  }
+  
+  fig <- fig %>%
+    layout(
+      title = 'Comparación de AUC por Semilla y Fold para Diferentes Métodos',
+      scene = list(
+        xaxis = list(title = 'Fold'),
+        yaxis = list(title = 'Semilla'),
+        zaxis = list(title = 'AUC')
+      )
+    )
+  
+  return(fig)
+}
+```
+
+Adicionalmente, se mostrará la **distribución de AUC a través de Folds y Semillas**. El objetivo de esta gráfica es proporcionar una visualización tridimensional detallada de la distribución del AUC a través de diferentes folds y semillas para un modelo específico. La gráfica permite observar cómo varía el rendimiento del modelo (medido por el AUC) en cada fold y cómo esta variación se distribuye a lo largo de varias ejecuciones independientes (diferentes semillas). Cada color representa una semilla distinta, lo que facilita la identificación de patrones de estabilidad y variabilidad en el rendimiento del modelo. Es gráfica se dejará de manera complementaria a la comparativa general, para que el lector pueda observar las diferencias específicas para cada modelo, sin embargo, *no se comentará*. 
+
+```{r}
 # Función para generar la distribución de AUC a través de folds para todas las semillas usadas de un modelo
-
-
 generate_auc_per_seed_and_fold <- function(performance_metrics) {
   # Calcular el AUC medio por semilla
   mean_auc_by_seed <- performance_metrics %>%
@@ -4508,88 +5244,600 @@ generate_auc_per_seed_and_fold <- function(performance_metrics) {
 
 ```
 
-```{r}
+:::
 
-# Gráfico de barras comparativo del AUC medio de los inner folds y el AUC medio de los outer folds
-generate_inner_outer_auc_comparison <- function(inner_fold_metrics, outer_fold_metrics) {
-  # Calcular AUC medio para inner folds
-  mean_inner_auc <- inner_fold_metrics %>%
-    group_by(Fold, Seed) %>%
-    summarize(mean_AUC = mean(AUC, na.rm = TRUE))
-  
-  # Calcular AUC medio para outer folds
-  mean_outer_auc <- outer_fold_metrics %>%
-    group_by(Fold, Seed) %>%
-    summarize(mean_AUC = mean(AUC, na.rm = TRUE))
-  
-  # Unir los dataframes por Fold y Seed
-  comparison_data <- merge(mean_inner_auc, mean_outer_auc, by = c("Fold", "Seed"), suffixes = c("_inner", "_outer"))
-  
-  # Crear la gráfica de barras comparativa
-  fig <- plot_ly(data = comparison_data, x = ~Fold) %>%
-    add_trace(
-      y = ~mean_AUC_inner, 
-      type = 'bar', 
-      name = 'AUC Medio Inner Folds',
-      marker = list(color = 'blue')
-    ) %>%
-    add_trace(
-      y = ~mean_AUC_outer, 
-      type = 'bar', 
-      name = 'AUC Medio Outer Folds',
-      marker = list(color = 'red')
-    ) %>%
-    layout(
-      title = 'Comparación de AUC Medio: Inner Folds vs Outer Folds',
-      xaxis = list(title = 'Fold'),
-      yaxis = list(title = 'AUC Medio'),
-      barmode = 'group'
-    )
-  
-  return(fig)
-}
+
+### Naive Bayes
+
+#### AUC Fold Interno vs Externo
+
+::: {.panel-tabset}
+
+## TodasVariables
+
+```{r}
+generate_inner_outer_auc_comparison(NaiveBayes_TodasVariables_Metrics$inner_fold_metrics, NaiveBayes_TodasVariables_Metrics$performance_metrics)
+```
+
+## Asociacion
+
+```{r}
+generate_inner_outer_auc_comparison(NaiveBayes_Asociacion_Metrics$inner_fold_metrics, NaiveBayes_Asociacion_Metrics$performance_metrics)
+```
+
+## StepAUC
+
+```{r}
+generate_inner_outer_auc_comparison(NaiveBayes_StepAUC_Metrics$inner_fold_metrics, NaiveBayes_StepAUC_Metrics$performance_metrics)
+```
+
+## Lasso
+
+```{r}
+generate_inner_outer_auc_comparison(NaiveBayes_Lasso_Metrics$inner_fold_metrics, NaiveBayes_Lasso_Metrics$performance_metrics)
+```
+
+:::
+
+El valor de AUC medio para todas las semillas por cada Fold es excepcional con el método del algoritmo de Naive Bayes. Como se puede observar, independientemente del método de selección de características aplicado, el rendimiento en los folds internos y externos es prácticamente el mismo, sin que el del externo supere al interno, que podría ser un signo de que el conjunto de datos ha sido mal construído, o de overfitting. En concreto se deben destacar los métodos de TodasVariables y StepAUC, por mantener el AUC promedio más alto, y el método de Asociación, por mantener el mismo rendimiento en los folds internos y externos, exhibiendo una gran capacidad de generalización y predicción. 
+
+#### AUC Medio Folds Externos
+
+::: {.panel-tabset}
+
+## TodasVariables
+
+```{r, message=FALSE, warning=FALSE}
+generate_outer_auc_violin_plot(NaiveBayes_TodasVariables_Metrics$performance_metrics)
+```
+
+## Asociacion
+
+```{r, message=FALSE, warning=FALSE}
+generate_outer_auc_violin_plot(NaiveBayes_Asociacion_Metrics$performance_metrics)
+```
+
+## StepAUC
+
+```{r, message=FALSE, warning=FALSE}
+generate_outer_auc_violin_plot(NaiveBayes_StepAUC_Metrics$performance_metrics)
+```
+
+## Lasso
+
+```{r, message=FALSE, warning=FALSE}
+generate_outer_auc_violin_plot(NaiveBayes_Lasso_Metrics$performance_metrics)
+```
+
+:::
+
+El método más destacable de este apartado podría ser el método de selección de características Lasso, ya que la dispersión del AUC se mantiene muy baja en los folds 1 y 5, y bastante estable en los folds 2 y 3, con la excepción del cuarto fold, el cual parece mostrar un valor de AUC bajo. La dispersión del resto de métodos es, en general, alta, sin embargo, hay que destacar que los métodos TodasVariables y StepAuc tienen la mediana en el valor de AUC alto, indicando que el, o los datos que causan la dispersión, pueden ser excepciones. 
+
+#### Comparativa Naive Bayes
+
+```{r}
+fig <- generate_combined_auc_3d_plot(
+  list(
+    NaiveBayes_TodasVariables_Metrics$performance_metrics,
+    NaiveBayes_Asociacion_Metrics$performance_metrics,
+    NaiveBayes_StepAUC_Metrics$performance_metrics,
+    NaiveBayes_Lasso_Metrics$performance_metrics
+  ),
+  c("Todas Variables", "Asociacion", "StepAUC", "Lasso")
+)
+
+fig
+```
+
+Los valores de AUC, para todos los métodos de selección de características aplicados, muestran una notable estabilidad, pareciendo que, independientemente de la semilla, las fluctuaciones entre folds se mantienen, indicando que el modelo aprende bien de los datos, siendo robusto a la incorporación de nuevos datos, y realizando buenas predicciones a futuro. La técnica que mejores métricas muestra es la de TodasVariables, seguida muy cerca por StepAUC, la cual muestra la ventaja de usar menos cantidad de características.  
+
+::: {.panel-tabset}
+
+## TodasVariables
+
+```{r}
+generate_auc_per_seed_and_fold(NaiveBayes_TodasVariables_Metrics$performance_metrics)
+```
+
+## Asociacion
+
+```{r}
+generate_auc_per_seed_and_fold(NaiveBayes_Asociacion_Metrics$performance_metrics)
+```
+
+## StepAUC
+
+```{r}
+generate_auc_per_seed_and_fold(NaiveBayes_StepAUC_Metrics$performance_metrics)
+```
+
+## Lasso
+
+```{r}
+generate_auc_per_seed_and_fold(NaiveBayes_Lasso_Metrics$performance_metrics)
+```
+
+:::
+
+### AdaBoost
+
+#### AUC Fold Interno vs Externo
+
+::: {.panel-tabset}
+
+## TodasVariables
+
+```{r}
+generate_inner_outer_auc_comparison(AdaBoost_TodasVariables_Metrics$inner_fold_metrics, AdaBoost_TodasVariables_Metrics$performance_metrics)
+```
+
+## Asociacion
+
+```{r}
+generate_inner_outer_auc_comparison(AdaBoost_Asociacion_Metrics$inner_fold_metrics, AdaBoost_Asociacion_Metrics$performance_metrics)
+```
+
+## StepAUC
+
+```{r}
+generate_inner_outer_auc_comparison(AdaBoost_StepAUC_Metrics$inner_fold_metrics, AdaBoost_StepAUC_Metrics$performance_metrics)
+```
+
+## Lasso
+
+```{r}
+generate_inner_outer_auc_comparison(AdaBoost_Lasso_Metrics$inner_fold_metrics, AdaBoost_Lasso_Metrics$performance_metrics)
+```
+
+:::
+
+Se puede observar que todos los métodos de selección de características mantienen un rendimiento mayor en los folds internos que externos, asegurando así que el conjunto de datos está bien construído. Sin embargo, **el método donde más pareados parecen estar estos dos valores, y por ello donde el modelo final podría tener una mayor capacidad de generalización, es en el método de selección de variables Lasso**.
+
+#### AUC Medio Folds Externos
+
+::: {.panel-tabset}
+
+## TodasVariables
+
+```{r, message=FALSE, warning=FALSE}
+generate_outer_auc_violin_plot(AdaBoost_TodasVariables_Metrics$performance_metrics)
+```
+
+## Asociacion
+
+```{r, message=FALSE, warning=FALSE}
+generate_outer_auc_violin_plot(AdaBoost_Asociacion_Metrics$performance_metrics)
+```
+
+## StepAUC
+
+```{r, message=FALSE, warning=FALSE}
+generate_outer_auc_violin_plot(AdaBoost_StepAUC_Metrics$performance_metrics)
+```
+
+## Lasso
+
+```{r, message=FALSE, warning=FALSE}
+generate_outer_auc_violin_plot(AdaBoost_Lasso_Metrics$performance_metrics)
+```
+
+:::
+
+En el método TodasVariables se puede observar una alta dispersión en todos los folds, con el cuarto siendo el que menos muestra, pero para el cual la mediana es de menor valor. Para el método Asociación, se puede observar que el segundo fold muestra una muy baja dispersión y un valor de AUC medio alto, sin embargo, los folds 1 y 5 muestran características totalmente opuestas. El método stepAUC podría ser una mezcla entre los dos anteriores, mostrando una dispersión hacia valores altos de AUC, pero, debido a que la mayoría de muestras caen en valores algo más mediocres de AUC, la media está más centrada en la escala. Por último, El método Lasso muestra una estabilidad en la dispersión de los AUC, ya que todos los folds están igual de dispersos, manteniendo las medianas en los mismos valores aproximadamente, sin embargo, también parecer ser el método con más outliers. Podemos concluir que parece que **los métodos Lasso y Asociación son algo más apropiados en cuanto a la robustez de los datos de entrada** al modelo.  
+
+#### Comparativa AdaBoost
+```{r}
+fig <- generate_combined_auc_3d_plot(
+  list(
+    AdaBoost_TodasVariables_Metrics$performance_metrics,
+    AdaBoost_Asociacion_Metrics$performance_metrics,
+    AdaBoost_StepAUC_Metrics$performance_metrics,
+    AdaBoost_Lasso_Metrics$performance_metrics
+  ),
+  c("Todas Variables", "Asociacion", "StepAUC", "Lasso")
+)
+
+fig
 
 ```
 
+Se puede observar que la dispersión de las medidas de AUC a través de los Folds no es demasiado alta, manteniendo estos valores entre .65 y .8, adicionalmente, parece que todos los puntos siguen un patrón a lo largo de las semillas para los folds generados, transmitiendo que el modelo es robusto a la aleatoriedad de la división de los datos, y concluyendo que es robusto ante nuevos datos, con una buena capacidad de predicción. Estos patrones que se repiten pueden incluir una tendencia a la disminución del AUC en el fold 1, una inestabilidad en el fold 2, una estabilidad en el 3, y una tendencia a la mejora en el 4 y 5. Por otra aprte, el modelo que parece haber obtenido mejores métricas es el que ha empleado la selección de características Lasso, concordando con lo concluído en las anteriores secciones. 
+
+::: {.panel-tabset}
+
+## TodasVariables
+
 ```{r}
-#  Gráfico de violín del AUC medio por outer fold con colores distintos para cada fold
-generate_outer_auc_violin_plot <- function(outer_fold_metrics) {
-  # Calcular AUC medio por outer fold y semilla
-  mean_outer_auc_by_seed <- outer_fold_metrics %>%
-    group_by(Fold, Seed) %>%
-    summarize(mean_AUC = mean(AUC, na.rm = TRUE))
-  
-  # Colores para cada fold
-  colors <- RColorBrewer::brewer.pal(n = length(unique(mean_outer_auc_by_seed$Fold)), name = "Set1")
-  
-  # Crear la gráfica de violín
-  fig <- plot_ly(data = mean_outer_auc_by_seed, y = ~mean_AUC, x = ~factor(Fold), type = 'violin', 
-                 box = list(visible = TRUE), meanline = list(visible = TRUE), points = 'all', spanmode = 'hard',
-                 color = ~factor(Fold), colors = colors) %>%
-    layout(
-      title = 'Distribución del AUC por Outer Fold y Semilla',
-      xaxis = list(title = 'Fold'),
-      yaxis = list(title = 'AUC Medio')
-    )
-  
-  return(fig)
-}
+generate_auc_per_seed_and_fold(AdaBoost_TodasVariables_Metrics$performance_metrics)
+```
+
+## Asociacion
+
+```{r}
+generate_auc_per_seed_and_fold(AdaBoost_Asociacion_Metrics$performance_metrics)
+```
+
+## StepAUC
+
+```{r}
+generate_auc_per_seed_and_fold(AdaBoost_StepAUC_Metrics$performance_metrics)
+```
+
+## Lasso
+
+```{r}
+generate_auc_per_seed_and_fold(AdaBoost_Lasso_Metrics$performance_metrics)
+```
+
+:::
+
+
+
+
+
+### RandomForest
+
+#### AUC Fold Interno vs Externo
+
+::: {.panel-tabset}
+
+## TodasVariables
+
+```{r}
+generate_inner_outer_auc_comparison(RandomForest_TodasVariables_Metrics$inner_fold_metrics, RandomForest_TodasVariables_Metrics$performance_metrics)
+```
+
+## Asociacion
+
+```{r}
+generate_inner_outer_auc_comparison(RandomForest_Asociacion_Metrics$inner_fold_metrics, RandomForest_Asociacion_Metrics$performance_metrics)
+```
+
+## StepAUC
+
+```{r}
+generate_inner_outer_auc_comparison(RandomForest_StepAUC_Metrics$inner_fold_metrics, RandomForest_StepAUC_Metrics$performance_metrics)
 ```
 
 
+:::
+
+Se puede observar que el rendimiento en para los Folds externos es notablemente más bajo que el rendimiento para los internos a lo largo de todos los métodos de selección de características. Este hecho denota que el modelo es estable y no se han cometido errores a la hora de evaluarlo, sin embargo, también resalta la pobre capacidad de generalización, incluso habiendo ajustado los hiperparámetros a sus mejores valores. 
+
+#### AUC Medio Folds Externos
+
+::: {.panel-tabset}
+
+## TodasVariables
+
+```{r, message=FALSE, warning=FALSE}
+generate_outer_auc_violin_plot(RandomForest_TodasVariables_Metrics$performance_metrics)
+```
+
+## Asociacion
+
+```{r, message=FALSE, warning=FALSE}
+generate_outer_auc_violin_plot(RandomForest_Asociacion_Metrics$performance_metrics)
+```
+
+## StepAUC
+
+```{r, message=FALSE, warning=FALSE}
+generate_outer_auc_violin_plot(RandomForest_StepAUC_Metrics$performance_metrics)
+```
 
 
-## Estabilidad de AUC entre Folds
+:::
+
+En el método TodasVariables se puede observar que la dispersión del Fold 1 es muy baja y centrada en un valor alto del AUC, sin embargo, el resto de folds tienen una varianza alta, demostrando una baja capacidad de generalización y predicción. Por otra parte, el método Asociación muestra una baja dispersión en los Folds 1, 2 y 5, con alguna excepción en los Folds 3 y 4, adicionalmente, todos los Folds están centrados alrededor de un valor de AUC común, que se sitúa entre el 0.62 y el 0.68, mostrando una estabilidad. Finalmente, el método StepAUC muestra una alta dispersión en el primer y último Fold, pero un alto valor de AUC promedio, al igual que el primer método. Se puede concluir que, para este modelo, el método de selección de características más adecuado podría ser el de TodasVariables. 
+
+#### Comparativa RandomForest
+```{r}
+fig <- generate_combined_auc_3d_plot(
+  list(
+    RandomForest_TodasVariables_Metrics$performance_metrics,
+    RandomForest_Asociacion_Metrics$performance_metrics,
+    RandomForest_StepAUC_Metrics$performance_metrics
+  ),
+  c("Todas Variables", "Asociacion", "StepAUC")
+)
+
+fig
+
+```
+
+Los métodos de selección más competitivos son StepAUC y TodasVariables, con AUC's de 0.677 y 0.682, respectivamente. Parece que, aunque el StepAUC muestre un mayor AUC global, la estabilidad del método hace que la dispersión del AUC sea más alta, teniendo un mínimo de 0.5 en la semila 27 para el Fold 1. Se podría concluir que el método más adecuado para el rendimiento con respecto al AUC del RandomForest es el de TodasVariables. 
+
+::: {.panel-tabset}
+
+## TodasVariables
+
+```{r}
+generate_auc_per_seed_and_fold(RandomForest_TodasVariables_Metrics$performance_metrics)
+```
+
+## Asociacion
+
+```{r}
+generate_auc_per_seed_and_fold(RandomForest_Asociacion_Metrics$performance_metrics)
+```
+
+## StepAUC
+
+```{r}
+generate_auc_per_seed_and_fold(RandomForest_StepAUC_Metrics$performance_metrics)
+```
+
+
+:::
+
+
+
+
+
+
+
+
+### SVM
+
+#### AUC Fold Interno vs Externo
+
+::: {.panel-tabset}
+
+## TodasVariables
+
+```{r}
+generate_inner_outer_auc_comparison(SVM_TodasVariables_Metrics$inner_fold_metrics, SVM_TodasVariables_Metrics$performance_metrics)
+```
+
+## Asociacion
+
+```{r}
+generate_inner_outer_auc_comparison(SVM_Asociacion_Metrics$inner_fold_metrics, SVM_Asociacion_Metrics$performance_metrics)
+```
+
+## StepAUC
+
+```{r}
+generate_inner_outer_auc_comparison(SVM_StepAUC_Metrics$inner_fold_metrics, SVM_StepAUC_Metrics$performance_metrics)
+```
+
+## Lasso
+
+```{r}
+generate_inner_outer_auc_comparison(SVM_Lasso_Metrics$inner_fold_metrics, SVM_Lasso_Metrics$performance_metrics)
+```
+
+:::
+
+En el método de todas las variables, el AUC medio en los inner folds es consistentemente mayor que en los outer folds. El método de todas las variables muestra valores notablemente bajos de AUC en el fold externo que en el interno, indicando estabilidad interna pero una pobre generalización. En el método de asociación, las diferencias entre los AUC medios de inner y outer folds son menores, sugiriendo una mejor generalización y consistencia en el rendimiento del modelo, llegando, de manera puntual y seguramente por outliers, a sobrepasar el rendimiento con test al rendimiento con la validación. El método stepAUC muestra una variabilidad similar a la de todas las variables, con inner folds generalmente superiores, pero con menos diferencia en comparación. Finalmente, el método Lasso presenta una paridad notable entre los AUC de inner y outer folds, reflejando una mayor estabilidad y generalización, con los valores más cercanos entre sí. En resumen, **los métodos de asociación y Lasso parecen ofrecer una mejor generalización y estabilidad en el rendimiento del modelo** en comparación con las técnicas que utilizan todas las variables y stepAUC.
+
+#### AUC Medio Folds Externos
+
+::: {.panel-tabset}
+
+## TodasVariables
+
+```{r, message=FALSE, warning=FALSE}
+generate_outer_auc_violin_plot(SVM_TodasVariables_Metrics$performance_metrics)
+```
+
+## Asociacion
+
+```{r, message=FALSE, warning=FALSE}
+generate_outer_auc_violin_plot(SVM_Asociacion_Metrics$performance_metrics)
+```
+
+## StepAUC
+
+```{r, message=FALSE, warning=FALSE}
+generate_outer_auc_violin_plot(SVM_StepAUC_Metrics$performance_metrics)
+```
+
+## Lasso
+
+```{r, message=FALSE, warning=FALSE}
+generate_outer_auc_violin_plot(SVM_Lasso_Metrics$performance_metrics)
+```
+
+:::
+
+En el método de todas las variables, se observa una mayor variabilidad en los valores de AUC, especialmente en el Fold 1, indicando inestabilidad en el rendimiento del modelo. El método de asociación presenta una distribución más compacta en general, con menos variabilidad, especialmente en los folds 1, 3 y 5, lo que sugiere una mayor consistencia en el rendimiento. El método stepAUC muestra una mayor variabilidad en el Fold 2, con un rango amplio de AUC, y menor consistencia en los folds 4 y 5. Finalmente, el método Lasso exhibe una distribución más equilibrada a través de todos los folds, con un AUC medio más alto, pero con una dispersión muy grande a pesar de todo. En conjunto, podríamos concluir que, **los métodos de asociación y, de manera secundaria, Lasso demuestran un rendimiento más confiable y menos variable en comparación con todas las variables y stepAUC**.
+
+#### Comparativa SVM
+
+```{r}
+fig <- generate_combined_auc_3d_plot(
+  list(
+    SVM_TodasVariables_Metrics$performance_metrics,
+    SVM_Asociacion_Metrics$performance_metrics,
+    SVM_StepAUC_Metrics$performance_metrics,
+    SVM_Lasso_Metrics$performance_metrics
+  ),
+  c("Todas Variables", "Asociacion", "StepAUC", "Lasso")
+)
+
+fig
+
+```
+
+Las gráficas comparativas del AUC para todos los métodos muestran una **notable inestabilidad en el rendimiento del SVM independientemente del método de selección de características utilizado**. Aunque el método Lasso presenta el AUC medio global más alto (0.64), seguido por la asociación (0.623), stepAUC (0.618) y todas las variables (0.617), en general, se observa una considerable variabilidad a través de diferentes semillas y folds. En todas las gráficas, los valores de AUC fluctúan significativamente, especialmente en los métodos de todas las variables y stepAUC, donde los puntos individuales muestran amplios rangos de dispersión. Incluso los métodos de selección de características que generalmente mejoran la estabilidad, como Lasso y asociación, no eliminan completamente la variabilidad, sugiriendo que el SVM es inherentemente inestable en este contexto. Esta inestabilidad destaca la dificultad del SVM para mantener un rendimiento consistente, lo que puede estar influenciado por la naturaleza de los datos y la sensibilidad del modelo a las particiones específicas de entrenamiento y prueba. 
+
+::: {.panel-tabset}
+
+## TodasVariables
+
+```{r}
+generate_auc_per_seed_and_fold(SVM_TodasVariables_Metrics$performance_metrics)
+```
+
+## Asociacion
+
+```{r}
+generate_auc_per_seed_and_fold(SVM_Asociacion_Metrics$performance_metrics)
+```
+
+## StepAUC
+
+```{r}
+generate_auc_per_seed_and_fold(SVM_StepAUC_Metrics$performance_metrics)
+```
+
+## Lasso
+
+```{r}
+generate_auc_per_seed_and_fold(SVM_Lasso_Metrics$performance_metrics)
+```
+
+:::
+
+
+
+
+
+
 
 
 ### ANN
 
+#### AUC Fold Interno vs Externo
+
+::: {.panel-tabset}
+
+## TodasVariables
+
 ```{r}
-ANN_StepAUC_Metrics <- process_experiment_data(performance_ANN_stepAUC)
-generate_auc_per_seed_and_fold(ANN_StepAUC_Metrics$performance_metrics)
-generate_outer_auc_violin_plot(ANN_StepAUC_Metrics$performance_metrics)
+generate_inner_outer_auc_comparison(ANN_TodasVariables_Metrics$inner_fold_metrics, ANN_TodasVariables_Metrics$performance_metrics)
+```
+
+## Asociacion
+
+```{r}
+generate_inner_outer_auc_comparison(ANN_Asociacion_Metrics$inner_fold_metrics, ANN_Asociacion_Metrics$performance_metrics)
+```
+
+## StepAUC
+
+```{r}
 generate_inner_outer_auc_comparison(ANN_StepAUC_Metrics$inner_fold_metrics, ANN_StepAUC_Metrics$performance_metrics)
 ```
+
+## Lasso
+
+```{r}
+generate_inner_outer_auc_comparison(ANN_Lasso_Metrics$inner_fold_metrics, ANN_Lasso_Metrics$performance_metrics)
+```
+
+:::
+
+Todas las gráficas muestran que **en ningún momento el AUC del outer fold supera al del inner fold, lo que indica que no ha habido errores en la división de datos, confirmando la correcta implementación de la validación cruzada**. En general, el AUC medio de los inner folds es consistentemente mayor o igual al de los outer folds a través de todos los folds, sugiriendo que el modelo generaliza adecuadamente sin sobreajustarse a los datos de entrenamiento. La similitud en los AUC medios entre los inner y outer folds en la mayoría de los casos refleja una buena estabilidad y consistencia en el rendimiento de las redes neuronales, con algunas diferencias observadas que son esperadas y muestran la variabilidad en el rendimiento del modelo dependiendo de la partición de los datos. 
+
+#### AUC Medio Folds Externos
+
+::: {.panel-tabset}
+
+## TodasVariables
+
+```{r, message=FALSE, warning=FALSE}
+generate_outer_auc_violin_plot(ANN_TodasVariables_Metrics$performance_metrics)
+```
+
+## Asociacion
+
+```{r, message=FALSE, warning=FALSE}
+generate_outer_auc_violin_plot(ANN_Asociacion_Metrics$performance_metrics)
+```
+
+## StepAUC
+
+```{r, message=FALSE, warning=FALSE}
+generate_outer_auc_violin_plot(ANN_StepAUC_Metrics$performance_metrics)
+```
+
+## Lasso
+
+```{r, message=FALSE, warning=FALSE}
+generate_outer_auc_violin_plot(ANN_Lasso_Metrics$performance_metrics)
+```
+
+:::
+
+Los gráficos de violín comparan la distribución del AUC por fold para los métodos de todas las variables, filtrado por análisis de asociación, stepAUC y embedded Lasso. En general, los métodos que usan todas las variables y el filtrado por análisis de asociación muestran distribuciones de AUC relativamente estrechas y consistentes en la mayoría de los folds, con valores centrados alrededor de 0.75 a 0.8, lo que indica un rendimiento estable. El método stepAUC muestra una variabilidad más amplia, especialmente en los folds 4 y 5, con AUC que varían desde aproximadamente 0.55 hasta 0.75, indicando una inestabilidad significativa en estos folds. Similarmente, el método embedded Lasso presenta una mayor dispersión en los folds 4 y 5, con rangos de AUC que van desde 0.6 a 0.75, sugiriendo una mayor inestabilidad y sensibilidad a las particiones de datos. En resumen, **mientras que los métodos de todas las variables y el filtrado por análisis de asociación mantienen una consistencia aceptable, los métodos stepAUC y Lasso muestran mayor variabilidad y menor estabilidad en ciertos folds**.
+
+#### Comparativa ANN
+
+```{r}
+fig <- generate_combined_auc_3d_plot(
+  list(
+    ANN_TodasVariables_Metrics$performance_metrics,
+    ANN_Asociacion_Metrics$performance_metrics,
+    ANN_StepAUC_Metrics$performance_metrics,
+    ANN_Lasso_Metrics$performance_metrics
+  ),
+  c("Todas Variables", "Asociacion", "StepAUC", "Lasso")
+)
+
+fig
+
+```
+
+Los gráficos 3D muestran un análisis comparativo del AUC a través de los métodos de todas las variables, filtrado por asociación, stepAUC y Lasso, destacando sus desempeños a lo largo de diferentes semillas y folds. En general, el método Lasso presenta el AUC medio global más alto (0.746), seguido por el filtrado por asociación (0.74), todas las variables (0.733) y stepAUC (0.731). El método Lasso muestra una mayor consistencia en los valores de AUC, particularmente en las semillas 27 y 90, con menos variabilidad en comparación con los otros métodos. El filtrado por asociación también demuestra una consistencia razonable, aunque con ligeras fluctuaciones. Por otro lado, los métodos de todas las variables y stepAUC muestran una mayor variabilidad, especialmente en ciertos folds y semillas, indicando inestabilidades en su rendimiento. La visualización revela que, aunque todos los métodos tienen rendimientos comparables, **Lasso y filtrado por asociación parecen ofrecer una mayor estabilidad y un rendimiento ligeramente superior**.
+
+::: {.panel-tabset}
+
+## TodasVariables
+
+```{r}
+generate_auc_per_seed_and_fold(ANN_TodasVariables_Metrics$performance_metrics)
+```
+
+## Asociacion
+
+```{r}
+generate_auc_per_seed_and_fold(ANN_Asociacion_Metrics$performance_metrics)
+```
+
+## StepAUC
+
+```{r}
+generate_auc_per_seed_and_fold(ANN_StepAUC_Metrics$performance_metrics)
+```
+
+## Lasso
+
+```{r}
+generate_auc_per_seed_and_fold(ANN_Lasso_Metrics$performance_metrics)
+```
+
+:::
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -4597,7 +5845,15 @@ generate_inner_outer_auc_comparison(ANN_StepAUC_Metrics$inner_fold_metrics, ANN_
 ## Estabilidad para Hiperparámetros
 
 ```{r}
-generate_hyperparameter_stability_analysis <- function(performance_metrics, hyperparameters) {
+generate_combined_hyperparameter_stability_analysis <- function(stepauc_metrics, lasso_metrics, asociacion_metrics, todasvariables_metrics, hyperparameters) {
+  # Combinar los dataframes
+  performance_metrics <- bind_rows(
+    stepauc_metrics %>% mutate(method = "stepauc"),
+    lasso_metrics %>% mutate(method = "lasso"),
+    asociacion_metrics %>% mutate(method = "asociacion"),
+    todasvariables_metrics %>% mutate(method = "todasvariables")
+  )
+  
   # Verificar el tamaño de la lista de hiperparámetros
   if (length(hyperparameters) == 2) {
     # Extraer los nombres de los hiperparámetros y sus valores posibles
@@ -4631,19 +5887,19 @@ generate_hyperparameter_stability_analysis <- function(performance_metrics, hype
         yaxis = list(title = hyper_y)
       )
     
-    # Crear el gráfico de violín para mostrar la varianza de cada hiperparámetro
-    violin_plot_x <- plot_ly(data = performance_metrics, y = ~get(hyper_x), type = 'violin', box = list(visible = TRUE), meanline = list(visible = TRUE)) %>%
+    # Crear los gráficos de violín para mostrar la varianza de cada hiperparámetro
+    violin_plot_x <- plot_ly(data = performance_metrics, y = ~get(hyper_x), type = 'violin', box = list(visible = TRUE), meanline = list(visible = TRUE), split = ~method) %>%
       layout(
         title = paste('Distribución del Hiperparámetro:', hyper_x),
         yaxis = list(title = hyper_x),
-        xaxis = list(title = hyper_x)
+        xaxis = list(title = "Método")
       )
     
-    violin_plot_y <- plot_ly(data = performance_metrics, y = ~get(hyper_y), type = 'violin', box = list(visible = TRUE), meanline = list(visible = TRUE)) %>%
+    violin_plot_y <- plot_ly(data = performance_metrics, y = ~get(hyper_y), type = 'violin', box = list(visible = TRUE), meanline = list(visible = TRUE), split = ~method) %>%
       layout(
         title = paste('Distribución del Hiperparámetro:', hyper_y),
         yaxis = list(title = hyper_y),
-        xaxis = list(title = hyper_y)
+        xaxis = list(title = "Método")
       )
     
     return(list(heatmap_plot = heatmap_plot, violin_plot_x = violin_plot_x, violin_plot_y = violin_plot_y))
@@ -4653,12 +5909,12 @@ generate_hyperparameter_stability_analysis <- function(performance_metrics, hype
     hyper_x <- names(hyperparameters)[1]
     possible_values_x <- hyperparameters[[hyper_x]]
     
-    # Crear el gráfico de violín para mostrar la varianza del único hiperparámetro
-    violin_plot_x <- plot_ly(data = performance_metrics, y = ~get(hyper_x), type = 'violin', box = list(visible = TRUE), meanline = list(visible = TRUE)) %>%
+    # Crear los gráficos de violín para mostrar la varianza del único hiperparámetro
+    violin_plot_x <- plot_ly(data = performance_metrics, y = ~get(hyper_x), type = 'violin', box = list(visible = TRUE), meanline = list(visible = TRUE), split = ~method) %>%
       layout(
         title = paste('Distribución del Hiperparámetro:', hyper_x),
         yaxis = list(title = hyper_x),
-        xaxis = list(title = hyper_x)
+        xaxis = list(title = "Método")
       )
     
     return(list(violin_plot_x = violin_plot_x))
@@ -4666,6 +5922,49 @@ generate_hyperparameter_stability_analysis <- function(performance_metrics, hype
     stop("La lista de hiperparámetros debe contener uno o dos elementos.")
   }
 }
+```
+
+### Decision Tree
+
+```{r}
+hyperparameters <- list(
+  Best_cp = c(0.001, 0.01, 0.1),
+  Best_minsplit = c(2, 5, 10, 15, 20)
+)
+
+#RPart_StepAUC_Metrics$performance_metrics <- RPart_StepAUC_Metrics$performance_metrics %>% rename(Best_cp = Best_CP)
+#RPart_StepAUC_Metrics$performance_metrics <- RPart_StepAUC_Metrics$performance_metrics %>% rename(Best_minsplit = Best_Minsplit)
+
+
+
+result <- generate_combined_hyperparameter_stability_analysis(RPart_StepAUC_Metrics$performance_metrics, 
+                                                              RPart_Lasso_Metrics$performance_metrics, 
+                                                              RPart_Asociacion_Metrics$performance_metrics,
+                                                              RPart_TodasVariables_Metrics$performance_metrics,
+                                                              hyperparameters)
+
+result$heatmap_plot
+result$violin_plot_x
+result$violin_plot_y
+```
+
+### SVM
+
+```{r}
+hyperparameters <- list(
+  Best_Kernel = c(1, 2), # 1: Linear, 2: Poly
+  Best_Cost = c(50, 100, 200)
+)
+
+result <- generate_combined_hyperparameter_stability_analysis(SVM_StepAUC_Metrics$performance_metrics, 
+                                                              SVM_Lasso_Metrics$performance_metrics, 
+                                                              SVM_Asociacion_Metrics$performance_metrics,
+                                                              SVM_TodasVariables_Metrics$performance_metrics,
+                                                              hyperparameters)
+
+result$heatmap_plot
+result$violin_plot_x
+result$violin_plot_y
 ```
 
 ### ANN
@@ -4676,7 +5975,11 @@ hyperparameters <- list(
   Best_Decay = c(0.1, 0.2, 0.3)
 )
 
-result <- generate_hyperparameter_stability_analysis(ANN_StepAUC_Metrics$performance_metrics, hyperparameters)
+result <- generate_combined_hyperparameter_stability_analysis(ANN_StepAUC_Metrics$performance_metrics, 
+                                                              ANN_Lasso_Metrics$performance_metrics, 
+                                                              ANN_Asociacion_Metrics$performance_metrics,
+                                                              ANN_TodasVariables_Metrics$performance_metrics,
+                                                              hyperparameters)
 
 result$heatmap_plot
 result$violin_plot_x
@@ -4686,96 +5989,129 @@ result$violin_plot_y
 
 ## Estabilidad de Variables
 
-```{r}
-generate_variable_stability_by_seed <- function(performance_metrics) {
-  # Expandir las variables en filas individuales
-  variable_data <- performance_metrics %>%
-    separate_rows(Best_Variables, sep = ",") %>%
-    group_by(Seed, Best_Variables) %>%
-    summarize(count = n(), .groups = 'drop')
+```{r, warning=FALSE}
+# Función para contar la frecuencia de selección de variables agrupadas
+contar_seleccion_variables_agrupadas <- function(df, variables_principales) {
+  variable_counts <- setNames(rep(0, length(variables_principales)), variables_principales)
   
-  # Obtener la lista completa de variables
-  all_variables <- unique(variable_data$Best_Variables)
-  
-  # Generar una gráfica de barras por cada semilla
-  unique_seeds <- unique(variable_data$Seed)
-  plots <- list()
-  
-  # Definir la paleta de colores
-  colors <- brewer.pal(n = length(unique_seeds), name = "Set1")
-  
-  # Encontrar el máximo valor para el eje Y
-  max_y_value <- max(variable_data$count, na.rm = TRUE)
-  
-  for (i in seq_along(unique_seeds)) {
-    seed <- unique_seeds[i]
-    seed_data <- filter(variable_data, Seed == seed)
-    
-    # Asegurarse de que todas las variables estén presentes, incluso si no fueron seleccionadas
-    seed_data <- seed_data %>%
-      complete(Best_Variables = all_variables, fill = list(count = 0)) %>%
-      arrange(Best_Variables)
-    
-    fig <- plot_ly(data = seed_data, x = ~Best_Variables, y = ~count, type = 'bar', 
-                   marker = list(color = colors[i])) %>%
-      layout(
-        title = paste('Frecuencia de Selección de Variables para Semilla', gsub("seed_", "", seed)),
-        xaxis = list(title = 'Variable'),
-        yaxis = list(title = 'Frecuencia', range = c(0, max_y_value))
-      )
-    plots[[as.character(seed)]] <- fig
+  for (variables in df$Best_Variables) {
+    var_list <- unlist(strsplit(variables, ","))
+    for (principal in variables_principales) {
+      if (any(grepl(principal, var_list))) {
+        variable_counts[principal] <- variable_counts[principal] + 1
+      }
+    }
   }
   
-  return(plots)
+  result <- as.data.frame(variable_counts)
+  result$Variable <- rownames(result)
+  rownames(result) <- NULL
+  colnames(result) <- c("Frecuencia", "Variable")
+  result <- result[order(-result$Frecuencia), ]
+  return(result)
 }
 
-```
-
-```{r}
-generate_variable_stability_overall <- function(performance_metrics) {
-  # Expandir las variables en filas individuales
-  variable_data <- performance_metrics %>%
-    separate_rows(Best_Variables, sep = ",") %>%
-    group_by(Best_Variables) %>%
-    summarize(count = n(), .groups = 'drop') %>%
-    mutate(percentage = count / sum(count) * 100)
+# Función combinada
+contar_seleccion_combined <- function(df1, df2, variables_principales) {
+  # Contar frecuencias en el primer dataframe
+  result_step_auc <- contar_seleccion_variables_agrupadas(df1, variables_principales)
+  result_step_auc$Metodo <- "StepAUC"
   
-  # Crear el gráfico de barras
-  fig <- plot_ly(data = variable_data, x = ~Best_Variables, y = ~percentage, type = 'bar', 
-                 marker = list(color = 'blue')) %>%
-    layout(
-      title = 'Frecuencia Total de Selección de Variables',
-      xaxis = list(title = 'Variable'),
-      yaxis = list(title = 'Frecuencia (%)')
-    )
+  # Contar frecuencias en el segundo dataframe con variables agrupadas
+  result_lasso <- contar_seleccion_variables_agrupadas(df2, variables_principales)
+  result_lasso$Metodo <- "Lasso"
   
-  return(list(plot = fig, dataframe = variable_data))
+  # Combinar ambos resultados
+  combined_result <- rbind(result_step_auc, result_lasso)
+  return(combined_result)
 }
 
+# Función para combinar todos los dataframes y añadir la columna de Modelo
+combinar_dataframes <- function(dataframes, modelos) {
+  combined_df <- do.call(rbind, dataframes)
+  
+  # Asegurar que la longitud de los modelos coincida con la de los dataframes combinados
+  combined_df$Modelo <- rep(modelos, each = nrow(dataframes[[1]]) / length(modelos))
+  
+  return(combined_df)
+}
+
+crear_visualizaciones <- function(combined_df) {
+  # Métricas por Método de selección
+  plot_metodo <- plot_ly(
+    combined_df, 
+    x = ~Variable, 
+    y = ~Frecuencia, 
+    color = ~Metodo, 
+    type = 'bar'
+  ) %>% layout(
+    title = 'Métricas por Método de Selección',
+    xaxis = list(title = 'Variable'),
+    yaxis = list(title = 'Frecuencia')
+  )
+  
+  # Métricas por Modelo
+  plot_modelo <- plot_ly(
+    combined_df, 
+    x = ~Variable, 
+    y = ~Frecuencia, 
+    color = ~Modelo, 
+    type = 'bar'
+  ) %>% layout(
+    title = 'Métricas por Modelo de Machine Learning',
+    xaxis = list(title = 'Variable'),
+    yaxis = list(title = 'Frecuencia')
+  )
+  
+  return(list(plot_metodo = plot_metodo, plot_modelo = plot_modelo))
+}
+
+variablesFactor <- c("Edad", "REst", "RPro", "Estadio", "Grado", "Fenotipo", "NodAfec")
+
+
+# ANN
+ANN_Variables <- contar_seleccion_combined(ANN_StepAUC_Metrics$performance_metrics, 
+                          ANN_Lasso_Metrics$performance_metrics, 
+                          variablesFactor)
+ANN_Variables$Modelo <- "ANN"
+
+# SVM
+SVM_Variables <- contar_seleccion_combined(SVM_StepAUC_Metrics$performance_metrics, 
+                          SVM_Lasso_Metrics$performance_metrics, 
+                          variablesFactor)
+SVM_Variables$Modelo <- "SVM"
+
+# DT
+DT_Variables <- contar_seleccion_combined(RPart_StepAUC_Metrics$performance_metrics, 
+                          RPart_Lasso_Metrics$performance_metrics, 
+                          variablesFactor)
+DT_Variables$Modelo <- "DT"
+
+# ADA
+ADA_Variables <- contar_seleccion_combined(AdaBoost_StepAUC_Metrics$performance_metrics, 
+                          AdaBoost_Lasso_Metrics$performance_metrics, 
+                          variablesFactor)
+ADA_Variables$Modelo <- "ADA"
+
+# NaiveBayes
+Naive_Variables <- contar_seleccion_combined(NaiveBayes_StepAUC_Metrics$performance_metrics, 
+                          NaiveBayes_Lasso_Metrics$performance_metrics, 
+                          variablesFactor)
+Naive_Variables$Modelo <- "Naive"
+
+
+dataframes <- list(Naive_Variables, ADA_Variables, DT_Variables, ANN_Variables, SVM_Variables)
+modelos <- c("NAIVE", "ADA", "DT", "ANN", "SVM")
+
+combined_df <- combinar_dataframes(dataframes, modelos)
+plots <- crear_visualizaciones(combined_df)
+plots$plot_metodo
+plots$plot_modelo
 ```
 
 
-## ANN
 
-```{r}
-# Uso de la función con los datos de ejemplo
-# Asumiendo que performance_metrics_combined está generado y disponible
-plots_by_seed <- generate_variable_stability_by_seed(ANN_StepAUC_Metrics$performance_metrics)
-for (seed in names(plots_by_seed)) {
-  print(paste("Gráfica para semilla:", seed))
-  print(plots_by_seed[[seed]])
-}
 
-# Uso de la función con los datos de ejemplo
-# Asumiendo que performance_metrics_combined está generado y disponible
-result_overall <- generate_variable_stability_overall(ANN_StepAUC_Metrics$performance_metrics)
-fig_overall <- result_overall$plot
-variable_stability_df <- result_overall$dataframe
-
-# Mostrar la visualización y el dataframe
-fig_overall
-variable_stability_df
-```
 
 
 
