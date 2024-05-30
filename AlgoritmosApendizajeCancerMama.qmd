@@ -5473,6 +5473,241 @@ generate_auc_per_seed_and_fold(AdaBoost_Lasso_Metrics$performance_metrics)
 
 
 
+### KNN 
+
+#### AUC Fold Interno vs Externo
+
+::: {.panel-tabset}
+
+## TodasVariables
+
+```{r}
+generate_inner_outer_auc_comparison(KNN_TodasVariables_Metrics$inner_fold_metrics,
+                                    KNN_TodasVariables_Metrics$performance_metrics)
+```
+
+## Asociacion
+
+```{r}
+generate_inner_outer_auc_comparison(KNN_Asociacion_Metrics$inner_fold_metrics,
+                                    KNN_Asociacion_Metrics$performance_metrics)
+```
+
+## StepAUC
+
+```{r}
+generate_inner_outer_auc_comparison(KNN_StepAUC_Metrics$inner_fold_metrics, 
+                                    KNN_StepAUC_Metrics$performance_metrics)
+```
+
+## Lasso
+
+```{r}
+generate_inner_outer_auc_comparison(KNN_Lasso_Metrics$inner_fold_metrics, 
+                                    KNN_Lasso_Metrics$performance_metrics)
+```
+
+:::
+
+Habiendo observados las gráficas de comparación del AUC de los folds internos contra los externos, se puede percibir que todos los métodos de selección de características proveen al KNN de una estabilidad robusta frente a predicciones, demostrado a través de la igualdad entre el AUC medio interno y externo. En los métodos TodasVariables, Asociación, y Lasso, se pueden observar que el AUC externo de los primeros folds incluso llega a superar al interno, si este comportamiento se repitiera de una manera más exagerada se podría sospechar de un sobreajuste o fuga de muestras de test en train, sin embargo, en este caso, parece que es un hecho más que resalta la capacidad de generalización del modelo KNN para nuestro problema. La contraparte es, que el AUC máximo no es tan alto como otros modelos que hemos observado anteriormente, sin embargo, de este análisis se puede concluir que el KNN es robusto al entrenamiento con datos aleatorios.   
+
+#### AUC Medio Folds Externos
+
+::: {.panel-tabset}
+
+## TodasVariables
+
+```{r, message=FALSE, warning=FALSE}
+generate_outer_auc_violin_plot(KNN_TodasVariables_Metrics$performance_metrics)
+```
+
+## Asociacion
+
+```{r, message=FALSE, warning=FALSE}
+generate_outer_auc_violin_plot(KNN_Asociacion_Metrics$performance_metrics)
+```
+
+## StepAUC
+
+```{r, message=FALSE, warning=FALSE}
+generate_outer_auc_violin_plot(KNN_StepAUC_Metrics$performance_metrics)
+```
+
+## Lasso
+
+```{r, message=FALSE, warning=FALSE}
+generate_outer_auc_violin_plot(KNN_Lasso_Metrics$performance_metrics)
+```
+
+:::
+
+A partir de los gráficos de violín del AUC por cada Fold, se deben destar dos métodos, el primero de ellos siendo el método StepAUC, que muestra una dispersión relativamente alta, pero centrada alrededor de valores altos de AUC, indicando que el modelo tiene una buena capacidad predictiva, pero no es muy robusto. En el otro extremo, se encuentra el método de Asociación, el cual tiene valores máximos de AUC algo más bajos, pero su dispersión es mucho menor, haciendo que la media global del AUC pueda acabar siendo más alta para este método, ya que se vería menos afectado por valores atípicos pequeños.   
+
+#### Comparativa KNN 
+```{r}
+fig <- generate_combined_auc_3d_plot(
+  list(
+    KNN_TodasVariables_Metrics$performance_metrics,
+    KNN_Asociacion_Metrics$performance_metrics,
+    KNN_StepAUC_Metrics$performance_metrics,
+    KNN_Lasso_Metrics$performance_metrics
+  ),
+  c("Todas Variables", "Asociacion", "StepAUC", "Lasso")
+)
+
+fig
+
+```
+
+Respaldando los dos anteriores contrastes, y observando la gráfica del valor de AUC por fold y semilla, para cada método de selección de características, para el modelo KNN, se puede concluir que los dos métodos más destacados son el método Asociación y StepAUC, con 0.749 y 0.717 de AUC, respectivamente. Como se comentó anteriormente, el AUC elevado del método de asociación proviene de una baja dispersión de los datos, con una mediana alta, en la mayoría de sus pliegues, a lo largo de todas las semillas. Por otra parte, el método StepAUC, aunque con un AUC menor, muestra una capacidad predictiva notable y robusta. 
+
+
+::: {.panel-tabset}
+
+## TodasVariables
+
+```{r, message=FALSE, warning=FALSE}
+generate_auc_per_seed_and_fold(RPart_TodasVariables_Metrics$performance_metrics)
+```
+
+## Asociacion
+
+```{r, message=FALSE, warning=FALSE}
+generate_auc_per_seed_and_fold(RPart_Asociacion_Metrics$performance_metrics)
+```
+
+## StepAUC
+
+```{r, message=FALSE, warning=FALSE}
+generate_auc_per_seed_and_fold(RPart_StepAUC_Metrics$performance_metrics)
+```
+
+## Lasso
+
+```{r, message=FALSE, warning=FALSE}
+generate_auc_per_seed_and_fold(RPart_Lasso_Metrics$performance_metrics)
+```
+
+:::
+
+
+### Decision Tree 
+
+#### AUC Fold Interno vs Externo
+
+::: {.panel-tabset}
+
+## TodasVariables
+
+```{r}
+generate_inner_outer_auc_comparison(RPart_TodasVariables_Metrics$inner_fold_metrics,
+                                    RPart_TodasVariables_Metrics$performance_metrics)
+```
+
+## Asociacion
+
+```{r}
+generate_inner_outer_auc_comparison(RPart_Asociacion_Metrics$inner_fold_metrics,
+                                    RPart_Asociacion_Metrics$performance_metrics)
+```
+
+## StepAUC
+
+```{r}
+generate_inner_outer_auc_comparison(RPart_StepAUC_Metrics$inner_fold_metrics, 
+                                    RPart_StepAUC_Metrics$performance_metrics)
+```
+
+## Lasso
+
+```{r}
+generate_inner_outer_auc_comparison(RPart_Lasso_Metrics$inner_fold_metrics, 
+                                    RPart_Lasso_Metrics$performance_metrics)
+```
+
+:::
+
+De la comparativa del AUC interno y externo para el método de los árboles de decisión se puede concluir que el rendimiento del modelo es subóptimo en varios sentidos. Por una parte, el AUC máximo de cada método parece no ser muy elevado, no llegando al $80%$ en ninguna de las ocasiones, adicionalmente, parece que rara vez el AUC de la predicción sobre el fold externo está parejo con el AUC de la validación del fold interno, mostrando así que la capacidad de generalización de este modelo es algo pobre.  
+
+#### AUC Medio Folds Externos
+
+::: {.panel-tabset}
+
+## TodasVariables
+
+```{r, message=FALSE, warning=FALSE}
+generate_outer_auc_violin_plot(RPart_TodasVariables_Metrics$performance_metrics)
+```
+
+## Asociacion
+
+```{r, message=FALSE, warning=FALSE}
+generate_outer_auc_violin_plot(RPart_Asociacion_Metrics$performance_metrics)
+```
+
+## StepAUC
+
+```{r, message=FALSE, warning=FALSE}
+generate_outer_auc_violin_plot(RPart_StepAUC_Metrics$performance_metrics)
+```
+
+## Lasso
+
+```{r, message=FALSE, warning=FALSE}
+generate_outer_auc_violin_plot(RPart_Lasso_Metrics$performance_metrics)
+```
+
+:::
+
+Confirmando las afirmaciones anteriores, parece que la dispersión del AUC por cada Fold es la causante de una baja media. Se puede observar un patrón constante a través de los folds de los diferentes métodos de selección de características, y es que la dispersión de los valores de AUC es muy alta, mostrando una inestabilidad en el modelo a la hora de poder realizar predicciones robustas sobre datos no vistos anteriormente. Se pueden observar algunas excepciones a la regla, como el fold 2 del método Asociación, que tiene una dispersión baja y una mediana que posiciona el correspondiente AUC como un valor competitivo, sin embargo, el resto de folds de este mismo método están en clara desventaja, pudiendo atribuir el éxito del segundo fold a una **distribución afortunada de los datos**. 
+
+#### Comparativa Decision Tree 
+```{r}
+fig <- generate_combined_auc_3d_plot(
+  list(
+    RPart_TodasVariables_Metrics$performance_metrics,
+    RPart_Asociacion_Metrics$performance_metrics,
+    RPart_StepAUC_Metrics$performance_metrics,
+    RPart_Lasso_Metrics$performance_metrics
+  ),
+  c("Todas Variables", "Asociacion", "StepAUC", "Lasso")
+)
+
+fig
+
+```
+
+Como se podría esperar por las observaciones anteriores, el AUC ofrecido por el ajuste de este modelo, tanto de sus hiperparámetros como de sus características, es relativamente bajo comparado con los modelos que se han comentado hasta ahora. Con un AUC global de 0.689, el método que no incluye una selección de variables (TodasVariables), podría ser considerado el más óptimo, sin embargo, se pueden observar claras fluctuaciones en el valor de su AUC para las diferentes semillas, demostrando que no es un método muy robusto a la hora de enfrentarse a datos aleatorios, siendo los folds 3 y 4 los más desfavorecidos para este método, llegando a obtener un AUC de 0.5 en el tercer fold de la semilla `123`. 
+
+::: {.panel-tabset}
+
+## TodasVariables
+
+```{r, message=FALSE, warning=FALSE}
+generate_auc_per_seed_and_fold(RPart_TodasVariables_Metrics$performance_metrics)
+```
+
+## Asociacion
+
+```{r, message=FALSE, warning=FALSE}
+generate_auc_per_seed_and_fold(RPart_Asociacion_Metrics$performance_metrics)
+```
+
+## StepAUC
+
+```{r, message=FALSE, warning=FALSE}
+generate_auc_per_seed_and_fold(RPart_StepAUC_Metrics$performance_metrics)
+```
+
+## Lasso
+
+```{r, message=FALSE, warning=FALSE}
+generate_auc_per_seed_and_fold(RPart_Lasso_Metrics$performance_metrics)
+```
+
+:::
+
+
 
 
 ### RandomForest
