@@ -2946,8 +2946,8 @@ performance_knn_todasvariables <- evaluate_with_seeds_KNN_TodasVariables_Asociac
   outer = 5,
   inner = 2,
   target_var = "PCR",
-  ks = c(10, 16, 20, 25, 30, 32),
-  ls = c(0, 1, 2),
+  ks = c(5, 10, 16, 20, 25, 30, 32),
+  ls = c(1, 2),
   vars = todas_variables_numeric,
   threshold = .35,
   seeds = seeds
@@ -2959,8 +2959,8 @@ performance_knn_Asociacion <- evaluate_with_seeds_KNN_TodasVariables_Asociacion(
   outer = 5,
   inner = 2,
   target_var = "PCR",
-  ks = c(10, 16, 20, 25, 30, 32),
-  ls = c(0, 1, 2),
+  ks = c(5, 10, 16, 20, 25, 30, 32),
+  ls = c(1, 2),
   vars = asociacion_numeric,
   threshold = .35,
   seeds = seeds
@@ -3184,8 +3184,8 @@ performance_knn_stepauc <- evaluate_with_seeds_KNN_stepAUC(
   outer = 5,
   inner = 2,
   target_var = "PCR",
-  ks = c(10, 16, 20, 25, 30, 32),
-  ls = c(0, 1, 2),
+  ks = c(5, 10, 16, 20, 25, 30, 32),
+  ls = c(1, 2),
   vars = todas_variables_numeric,
   threshold = .35,
   seeds = seeds
@@ -3441,8 +3441,8 @@ performance_knn_lasso <- evaluate_with_seeds_KNN_lasso(
   outer = 5,
   inner = 2,
   target_var = "PCR",
-  ks = c(10, 16, 20, 25, 30, 32),
-  ls = c(0, 1, 2),
+  ks = c(5, 10, 16, 20, 25, 30, 32),
+  ls = c(1, 2),
   vars = todas_variables_numeric,
   threshold = .35,
   seeds = seeds
@@ -4354,8 +4354,8 @@ performance_ANN_todasvariables <- evaluate_with_seeds_ANN_TodasVariables_Asociac
   outer = 5,
   inner = 2,
   target_var = "PCR",
-  sizes = c(5,10,15,20),
-  decays = c(0.1, 0.2, 0.3),
+  sizes = c(5,10,15,20,25,30),
+  decays = c(0.1, 0.2, 0.3, 0.4),
   vars = todas_variables_factor,
   threshold = .35,
   seeds = seeds
@@ -4367,13 +4367,13 @@ performance_ANN_asociacion <- evaluate_with_seeds_ANN_TodasVariables_Asociacion(
   outer = 5,
   inner = 2,
   target_var = "PCR",
-  sizes = c(5,10,15,20),
-  decays = c(0.1, 0.2, 0.3),
+  sizes = c(5,10,15,20,25,30),
+  decays = c(0.1, 0.2, 0.3, 0.4),
   vars = asociacion,
   threshold = .35,
   seeds = seeds
 )
-performance_ANN_asociacion
+
 save(performance_ANN_todasvariables, file = "RData_Files_Algorithms/ANN_TodasVariables.RData")
 save(performance_ANN_asociacion, file = "RData_Files_Algorithms/ANN_Asociacion.RData")
 ```
@@ -4576,8 +4576,8 @@ performance_ANN_stepAUC <- evaluate_with_seeds_ANN_StepAUC(
   outer = 5,
   inner = 2,
   target_var = "PCR",
-  sizes = c(5,10,15,20),
-  decays = c(0.1, 0.2, 0.3),
+  sizes = c(5,10,15,20,25,30),
+  decays = c(0.1, 0.2, 0.3, 0.4),
   vars = todas_variables_factor,
   threshold = .35,
   seeds = seeds
@@ -4813,8 +4813,8 @@ performance_ANN_lasso <- evaluate_with_seeds_ANN_lasso(
   outer = 5,
   inner = 2,
   target_var = "PCR",
-  sizes = c(5,10,15,20),
-  decays = c(0.1, 0.2, 0.3),
+  sizes = c(5,10,15,20,25,30),
+  decays = c(0.1, 0.2, 0.3, 0.4),
   threshold = .35,
   seeds = seeds
 )

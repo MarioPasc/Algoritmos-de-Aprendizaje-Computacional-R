@@ -77,6 +77,15 @@ data_original <- data_original[, nuevo_orden]
 
 # Introducción
 
+El cáncer de mama es el cáncer no cutáneo más común en las mujeres en los Estados Unidos, con una incidencia estimada de 310,720 casos de enfermedad invasiva y 42,250 defunciones durante 2024 [@nci2024deteccion]. Este problema de salud tiene una relevancia crítica debido a su impacto en la vida de las mujeres y en la sociedad en general (@fig-cancermama).
+
+La capacidad de anticipar la metástasis de un paciente de cáncer de mama es esencial, ya que permite una intervención temprana y potencialmente curativa. La acción rápida contra el cáncer, especialmente en sus etapas iniciales, es crucial para salvar vidas. De aquí surge la necesidad de desarrollar modelos predictivos basados en datos, los cuales pueden ofrecer una herramienta valiosa para identificar a los pacientes en riesgo de metástasis, permitiendo un diagnóstico y tratamiento tempranos.
+
+Para los clínicos, la implementación de un modelo predictivo para predecir el estado PCR de los pacientes con cáncer de mama puede mejorar la precisión del diagnóstico, reduciendo el sobrediagnóstico y el sobretratamiento, lo cual es particularmente relevante dado que la detección temprana del cáncer de mama puede conducir a un sobrediagnóstico, donde se detectan cánceres que no representan una amenaza para la vida del paciente [@nci2024deteccion]. Por otra parte, estos modelos pueden ayudar a optimizar el uso de recursos, al permitir una asignación más eficiente de los tratamientos y exámenes, basada en la probabilidad de que un paciente progrese a metástasis. Tercero, pueden mejorar la calidad de vida de los pacientes al permitir un enfoque más personalizado del tratamiento, basado en su riesgo individual de metástasis.
+
+![Incidencias generales del cáncer de mama invasivo y cáncer de mama metastásico en mujeres de 40 o más años en 9 sitios del programa Surveillance, Epidemiology, and End Results (SEER) durante el período de 1975 a 2012.](cancermet.jpg){#fig-cancermama fig-align="center"}
+
+
 ## Objetivos
 
 El principal objetivo de este estudio es obtener un modelo ajustado al conjunto de datos de Metástasis de Cáncer de Mama para poder realizar predicciones efectivas sobre el estado PCR de un paciente dada una serie de variables o características sobre este. Consecuentemente, nace de manera natural un segundo objetivo principal, y es el de la determinación de las características más importantes para la determinación del estado del paciente, es decir, la realización de una *selección de características*. Todo esto se realizará con la finalidad de poner un modelo en producción, el cual pueda ser usado a través de la interfaz `RShiny` para la predicción efectiva del estado PCR de un paciente de Cáncer de Mama.
@@ -91,8 +100,6 @@ Objetivos secundarios de este proyecto incluyen el estudio de la estabilidad en 
 | Estudiar la estabilidad en las características seleccionadas                    | Secundario         |
 | Explorar la estabilidad de los hiperparámetros de un mismo modelo a lo largo de diferentes semillas aleatorias establecidas.                                 | Secundario         |
 
-
-## Trabajos Previos
 
 
 
@@ -362,6 +369,8 @@ El *outer loop* se encarga de la evaluación externa del modelo y se basa en la 
 
 Dentro de cada iteración del *outer loop*, se implementa el *inner loop*, cuyo objetivo es el ajuste fino de los hiperparámetros del modelo y la selección de las variables más relevantes. El *inner loop* utiliza una nueva división del conjunto de entrenamiento en pliegues adicionales. Generalmente, se opta por una validación cruzada más sencilla dentro de este bucle interno. Aquí, uno de los pliegues del conjunto de entrenamiento actúa como validación, mientras que los restantes se utilizan para el ajuste del modelo. Este proceso se repite varias veces para identificar la **combinación óptima de hiperparámetros y características que maximicen el rendimiento predictivo en el conjunto de validación**.
 
+Para cada modelo, **se han acotado los valores de los hiperparámetros qu                                                                                                 e formarán parte de la malla mediante pruebas con la doble validación cruzada y todas las variables**. Este enfoque ha decidido adoptarse para reducir la cantidad de hiperparámetros a probar durante el bucle interno con la finalidad de reducir el tiempo de cómputo del estudio.  
+
 #### Evaluación Final
 
 Una vez completado el ajuste en el *inner loop*, se evalúa el modelo ajustado en el conjunto de test reservado en el *outer loop*. Este enfoque jerárquico asegura que el ajuste de los hiperparámetros y la selección de variables no influyan en la evaluación final del rendimiento del modelo. El rendimiento se cuantifica mediante métricas como el AUC (Área Bajo la Curva), proporcionando una estimación promedio del rendimiento del modelo a lo largo de las iteraciones del *outer loop*. Este método de doble validación cruzada 5x2 ofrece una estimación más confiable y menos optimista del rendimiento del modelo, adecuada para su implementación en escenarios clínicos donde la precisión es crucial.
@@ -461,9 +470,9 @@ Random Forest opera creando una colección de árboles de decisión, cada uno en
 
 Los principales hiperparámetros ajustados en este estudio han sido:
 
-- **`ntree_values`**: Este parámetro define el número de árboles en el bosque. Un mayor número de árboles generalmente mejora la precisión del modelo, ya que la predicción final se basa en la agregación de un mayor número de árboles, reduciendo así la varianza. Sin embargo, un número muy alto de árboles puede aumentar el tiempo de entrenamiento sin proporcionar mejoras significativas en el rendimiento. Ajustar el valor de `ntree` permite encontrar un equilibrio entre la precisión y la eficiencia computacional del modelo.
+- **ntree_values**: Este parámetro define el número de árboles en el bosque. Un mayor número de árboles generalmente mejora la precisión del modelo, ya que la predicción final se basa en la agregación de un mayor número de árboles, reduciendo así la varianza. Sin embargo, un número muy alto de árboles puede aumentar el tiempo de entrenamiento sin proporcionar mejoras significativas en el rendimiento. Ajustar el valor de `ntree` permite encontrar un equilibrio entre la precisión y la eficiencia computacional del modelo.
 
-- **`mtry_values`**: Este parámetro controla el número de características que se consideran para cada división en los árboles de decisión. Un valor más bajo de `mtry` puede reducir el riesgo de sobreajuste, ya que introduce más variabilidad entre los árboles individuales. Un valor más alto permite que cada árbol considere más características en cada división, lo que puede mejorar la precisión del modelo si las características adicionales son informativas. Ajustar `mtry` permite optimizar la capacidad del modelo para capturar las relaciones relevantes en los datos sin sobreajustarse.
+- **mtry_values**: Este parámetro controla el número de características que se consideran para cada división en los árboles de decisión. Un valor más bajo de `mtry` puede reducir el riesgo de sobreajuste, ya que introduce más variabilidad entre los árboles individuales. Un valor más alto permite que cada árbol considere más características en cada división, lo que puede mejorar la precisión del modelo si las características adicionales son informativas. Ajustar `mtry` permite optimizar la capacidad del modelo para capturar las relaciones relevantes en los datos sin sobreajustarse.
 
 En resumen, Random Forest es un potente algoritmo de clasificación que combina las predicciones de múltiples árboles de decisión para mejorar la precisión y la robustez del modelo. La cuidadosa selección de los parámetros `ntree_values` y `mtry_values` asegura un modelo equilibrado que generaliza bien en nuevos datos, proporcionando predicciones fiables del estado PCR de los pacientes.
 
@@ -501,9 +510,9 @@ donde $\mathbf{w}$ es el vector de pesos y $b$ es el sesgo. El objetivo es encon
 - **Kernel**: Este parámetro define la función de transformación que se utiliza para proyectar los datos en un espacio de mayor dimensión. Los kernels disponibles incluyen:
 
   - **Lineal**: $K(\mathbf{x_i}, \mathbf{x_j}) = \mathbf{x_i} \cdot \mathbf{x_j}$
-  - **Sigmoid**: $ K(\mathbf{x_i}, \mathbf{x_j}) = \tanh(\alpha \mathbf{x_i} \cdot \mathbf{x_j} + r) $
-  - **Polinomial**: $ K(\mathbf{x_i}, \mathbf{x_j}) = (\alpha \mathbf{x_i} \cdot \mathbf{x_j} + r)^d $
-  - **RBF (Radial Basis Function)**: $ K(\mathbf{x_i}, \mathbf{x_j}) = \exp(-\gamma ||\mathbf{x_i} - \mathbf{x_j}||^2) $
+  - **Sigmoid**: $K(\mathbf{x_i}, \mathbf{x_j}) = \tanh(\alpha \mathbf{x_i} \cdot \mathbf{x_j} + r)$
+  - **Polinomial**: $K(\mathbf{x_i}, \mathbf{x_j}) = (\alpha \mathbf{x_i} \cdot \mathbf{x_j} + r)^d$
+  - **RBF (Radial Basis Function)**: $K(\mathbf{x_i}, \mathbf{x_j}) = \exp(-\gamma ||\mathbf{x_i} - \mathbf{x_j}||^2)$
 
   La elección del kernel afecta directamente la capacidad del SVM para capturar relaciones no lineales en los datos. Por ejemplo, un kernel lineal es adecuado para datos linealmente separables, mientras que un kernel RBF es más flexible y puede modelar relaciones complejas.
 
@@ -2887,6 +2896,8 @@ load("RData_Files_Algorithms/DecisionTree_Lasso.RData")
 
 ## K-Nearest Neighbours 
 
+En este modelo hay que hacer una aclaración importante:
+
 ### Aparente
 
 ```{r, eval=FALSE}
@@ -3089,7 +3100,7 @@ performance_knn_todasvariables <- evaluate_with_seeds_KNN_TodasVariables_Asociac
   inner = 2,
   target_var = "PCR",
   ks = c(10, 16, 20, 25, 30, 32),
-  ls = c(0, 1, 2),
+  ls = c(1, 2),
   vars = todas_variables_numeric,
   threshold = .35,
   seeds = seeds
@@ -3110,7 +3121,7 @@ performance_knn_Asociacion <- evaluate_with_seeds_KNN_TodasVariables_Asociacion(
   inner = 2,
   target_var = "PCR",
   ks = c(10, 16, 20, 25, 30, 32),
-  ls = c(0, 1, 2),
+  ls = c(1, 2),
   vars = asociacion_numeric,
   threshold = .35,
   seeds = seeds
@@ -3332,7 +3343,7 @@ performance_knn_stepauc <- evaluate_with_seeds_KNN_stepAUC(
   inner = 2,
   target_var = "PCR",
   ks = c(10, 16, 20, 25, 30, 32),
-  ls = c(0, 1, 2),
+  ls = c(1, 2),
   vars = todas_variables_numeric,
   threshold = .35,
   seeds = seeds
@@ -3587,7 +3598,7 @@ performance_knn_lasso <- evaluate_with_seeds_KNN_lasso(
   inner = 2,
   target_var = "PCR",
   ks = c(10, 16, 20, 25, 30, 32),
-  ls = c(0, 1, 2),
+  ls = c(1, 2),
   vars = todas_variables_numeric,
   threshold = .35,
   seeds = seeds
@@ -4446,8 +4457,8 @@ performance_ANN_todasvariables <- evaluate_with_seeds_ANN_TodasVariables_Asociac
   outer = 5,
   inner = 2,
   target_var = "PCR",
-  sizes = c(5,10,15,20),
-  decays = c(0.1, 0.2, 0.3),
+  sizes = c(5,10,15,20,25,30),
+  decays = c(0.1, 0.2, 0.3, 0.4),
   vars = todas_variables_factor,
   threshold = .35,
   seeds = seeds
@@ -4468,8 +4479,8 @@ performance_ANN_asociacion <- evaluate_with_seeds_ANN_TodasVariables_Asociacion(
   outer = 5,
   inner = 2,
   target_var = "PCR",
-  sizes = c(5,10,15,20),
-  decays = c(0.1, 0.2, 0.3),
+  sizes = c(5,10,15,20,25,30),
+  decays = c(0.1, 0.2, 0.3, 0.4),
   vars = asociacion,
   threshold = .35,
   seeds = seeds
@@ -4661,8 +4672,8 @@ performance_ANN_stepAUC <- evaluate_with_seeds_ANN_StepAUC(
   outer = 5,
   inner = 2,
   target_var = "PCR",
-  sizes = c(5,10,15,20),
-  decays = c(0.1, 0.2, 0.3),
+  sizes = c(5,10,15,20,25,30),
+  decays = c(0.1, 0.2, 0.3, 0.4),
   vars = todas_variables_factor,
   threshold = .35,
   seeds = seeds
@@ -4897,8 +4908,8 @@ performance_ANN_lasso <- evaluate_with_seeds_ANN_lasso(
   outer = 5,
   inner = 2,
   target_var = "PCR",
-  sizes = c(5,10,15,20),
-  decays = c(0.1, 0.2, 0.3),
+  sizes = c(5,10,15,20,25,30),
+  decays = c(0.1, 0.2, 0.3, 0.4),
   threshold = .35,
   seeds = seeds
 )
@@ -5070,6 +5081,34 @@ knitr::kable(head(ANN_StepAUC_Metrics$inner_fold_metrics, 15))
 
 :::
 
+
+## Rendimiento Aparente
+
+```{r}
+modelos <- c("NaiveBayes", "Adaboost", "KNN", "DT", "RF", "SVM", "ANN")
+auc_values <- c(resultadosAparentesNaiveBayes$roc_curve$auc,
+                resultadosAparentesAdaBoost$roc_curve$auc,
+                resultadosAparentesKNN$roc_curve$auc,
+                resultadosAparentesDT$roc_curve$auc,
+                resultadosAparentesRF$roc_curve$auc,
+                resultadosAparentesSVM$roc_curve$auc,
+                resultadosAparentesNN$roc_curve$auc)
+
+data <- data.frame(Modelo = modelos, AUC = auc_values)
+
+fig <- plot_ly(data, x = ~Modelo, y = ~AUC, type = 'bar',
+               marker = list(color = 'rgb(158,202,225)',
+                             line = list(color = 'rgb(8,48,107)', width = 1.5)))
+fig <- fig %>% layout(title = "Diferencia de AUC entre Modelos",
+                      xaxis = list(title = "Modelo"),
+                      yaxis = list(title = "AUC"),
+                      margin = list(b = 100))
+                      
+fig
+```
+
+
+Como se puede observar por el rendimiento aparente, los modelos más prometedores en este estudio parecen ser las Redes de Neuronas Artificiales, los Decision Tree, y los Random Forest. Se tomarán estas medidas como cuantificaciones optimistas del máximo rendimiento que se puede obtener para el modelo, sirviendo así como base para la comparación continua de esta sección del proyecto. 
 
 
 ## Estabilidad de AUC entre Folds
@@ -6050,6 +6089,13 @@ generate_auc_per_seed_and_fold(ANN_Lasso_Metrics$performance_metrics)
 
 ### AUC - Conclusión
 
+Una vez realizada la exploración de las métricas específicas para cada modelo, prestando atención sobre todo a la dispersión del AUC dependiente del método de selección de variables usado, se va a proceder con una exploración global del AUC, dependiendo de cada método y modelo aplicado. Este análisis nos permitirá descartar los modelos menos estables, o con un AUC medio más bajo. Los modelos que pasen este filtro de selección, pasarán a la siguiente etapa de discusión, en la que se analizará la estabilidad de sus hiperparámetros, arrojando conclusiones importantes sobre la estabilidad del modelo frente a la aleatoriedad de los datos con los que ha sido entrado.
+
+Se ha decidido que la primera etapa esté relacionada con la métrica del AUC ya que el rendimiento del modelo es la *carta de presentación del modelo frente a los profesionales de la salud interesados en usarlo*, por lo que es una métrica que debe mantenerse, tanto alta, como estable. Se realizaron entonces los siguientes análisis: 
+
+::: {.panel-tabset}
+
+## AUC Global por Modelo 
 
 ```{r}
 generate_auc_comparison_violin_plot <- function(model_data_list) {
@@ -6135,9 +6181,15 @@ violin_plot
 
 ```
 
+Como se puede observar en el gráfico comparativo de violín superior, hay variaciones significativas en cuanto a la dispersión, media, y mediana del AUC dependiendo del modelo. Los modelos que exhiben un peor rendimiento son el SVM, DecisionTree, y RandomForest, estos muestran una varianza del AUC muy alta, desviándose hacia valores bajos, haciendo que la media disminuya notablemente, en algunos casos, llegando a hacer que el rendimiento esté por debajo de un clasificador aleatorio (`AUC<.5`).
 
+Por otra parte, los modelos restastes exhiben un AUC promedio elevado. El KNN un AUC medio de 0.7176, y una media de 0.7213, sin embargo, también exhibe una dispersión moderada comparada con el resto de modelos, cuantificada por el rango del modelo, $Rango = Max-Min=0.15$. Las ANN son el siguiente mejor modelo; este modelo exhibe un AUC medio global de 0.737, con una mediana en 0.742, su debilidad es la misma que el KNN, el rango de sus datos, que refleja la dispersión, es algo elevado, siendo este de 0.3, el doble que el KNN. 
 
+Los dos últimos modelos son muy similares en cuanto a sus estadísticos. El Adaboost muestra un AUC medio de 0.733, coincidiendo con su mediana, dato que recalta que la distribución de los valores de AUC con este modelo está muy equilibrada y poco dispersa; el rango del modelo es de 0.17. Por otra parte, el algoritmo NaiveBayes, si bien muestra un AUC medio mayor que al Adaboost, de 0.74, con una mediana de 0.737, su rango es algo mayor (0.23), denotando que el modelo puede no ser tan robusto como Adaboost. 
 
+Se puede concluir entonces que, **teniendo solo en cuenta el AUC medio global, y su dispersión**, el modelo Adaboost, seguido por NaiveBayes y las ANN, son los que tienen un rendimiento más óptimo. Por lo que son los principales candidatos para pasar a la siguiente fase de evaluación. 
+
+## AUC Global por Método
 
 ```{r}
 generate_auc_feature_selection_violin_plot <- function(selection_methods_data_list) {
@@ -6215,18 +6267,125 @@ violin_plot
 ```
 
 
+Como se puede observar, todos los métodos de selección de variables exhiben un comportamiento similar, esto se puede concluir al observar la dispersión, media, y mediana del AUC a través de todo ellos. Sin embargo, se debe destacar el método de selección de variables Lasso, ya que todos los modelos que lo han empleado han obtenido de media un AUC de 0.703, y muestra una dispersión de los datos menor que el resto de métodos de selección, con un rango de 0.34, justificando que este método de selección de variables aporta una mayor estabilidad al método que lo acompaña. 
 
 
 
+## AUC Global por Variable y Método
 
 
+```{r}
+generate_auc_heatmap <- function(model_data_list, selection_methods) {
+  # Inicializar una lista para almacenar los datos combinados
+  combined_data <- list()
+  
+  # Recorrer cada modelo en el vector de listas
+  for (model_name in names(model_data_list)) {
+    # Obtener los dataframes para cada método de selección de características
+    model_methods <- model_data_list[[model_name]]
+    
+    for (method_name in names(model_methods)) {
+      # Obtener el dataframe del método actual
+      method_data <- model_methods[[method_name]]
+      
+      # Combinar los dataframes y agregar columnas para el nombre del modelo y el método
+      combined_data[[paste(model_name, method_name, sep = "_")]] <- method_data %>%
+        mutate(Model = model_name, Method = method_name)
+    }
+  }
+  
+  # Combinar todos los datos en un solo dataframe
+  final_data <- bind_rows(combined_data)
+  
+  # Calcular el AUC promedio para cada combinación de modelo y método
+  auc_summary <- final_data %>%
+    group_by(Model, Method) %>%
+    summarise(AUC_Mean = mean(AUC, na.rm = TRUE)) %>%
+    ungroup()
+  
+  # Crear el mapa de calor
+  heatmap_plot <- plot_ly(
+    data = auc_summary,
+    x = ~Model,
+    y = ~Method,
+    z = ~AUC_Mean,
+    type = 'heatmap',
+    colorscale = 'Viridis',
+    colorbar = list(title = 'AUC Promedio')
+  ) %>%
+    layout(
+      title = 'Mapa de Calor de AUC Promedio por Modelo y Método de Selección de Características',
+      xaxis = list(title = 'Modelos'),
+      yaxis = list(title = 'Métodos de Selección de Características')
+    )
+  
+  return(heatmap_plot)
+}
+
+# Ejemplo de uso
+# Preparación de los datos con los mismos dataframes que antes
+
+model_data_list <- list(
+  ANN = list(
+    TodasVariables = ANN_TodasVariables_Metrics$performance_metrics,
+    Asociacion = ANN_Asociacion_Metrics$performance_metrics,
+    StepAUC = ANN_StepAUC_Metrics$performance_metrics,
+    Lasso = ANN_Lasso_Metrics$performance_metrics
+  ),
+  SVM = list(
+    TodasVariables = SVM_TodasVariables_Metrics$performance_metrics,
+    Asociacion = SVM_Asociacion_Metrics$performance_metrics,
+    StepAUC = SVM_StepAUC_Metrics$performance_metrics,
+    Lasso = SVM_Lasso_Metrics$performance_metrics
+  ),
+  KNN = list(
+    TodasVariables = KNN_TodasVariables_Metrics$performance_metrics,
+    Asociacion = KNN_Asociacion_Metrics$performance_metrics,
+    StepAUC = KNN_StepAUC_Metrics$performance_metrics,
+    Lasso = KNN_Lasso_Metrics$performance_metrics
+  ),
+  RandomForest = list(
+    TodasVariables = RandomForest_TodasVariables_Metrics$performance_metrics,
+    Asociacion = RandomForest_Asociacion_Metrics$performance_metrics,
+    StepAUC = RandomForest_StepAUC_Metrics$performance_metrics
+    # Lasso = No hay datos para este caso
+  ),
+  NaiveBayes = list(
+    TodasVariables = NaiveBayes_TodasVariables_Metrics$performance_metrics,
+    Asociacion = NaiveBayes_Asociacion_Metrics$performance_metrics,
+    StepAUC = NaiveBayes_StepAUC_Metrics$performance_metrics,
+    Lasso = NaiveBayes_Lasso_Metrics$performance_metrics
+  ),
+  AdaBoost = list(
+    TodasVariables = AdaBoost_TodasVariables_Metrics$performance_metrics,
+    Asociacion = AdaBoost_Asociacion_Metrics$performance_metrics,
+    StepAUC = AdaBoost_StepAUC_Metrics$performance_metrics,
+    Lasso = AdaBoost_Lasso_Metrics$performance_metrics
+  ),
+  RPart = list(
+    TodasVariables = RPart_TodasVariables_Metrics$performance_metrics,
+    Asociacion = RPart_Asociacion_Metrics$performance_metrics,
+    StepAUC = RPart_StepAUC_Metrics$performance_metrics,
+    Lasso = RPart_Lasso_Metrics$performance_metrics
+  )
+)
+
+# Generar y mostrar el mapa de calor
+heatmap_plot <- generate_auc_heatmap(model_data_list, c("TodasVariables", "Asociacion", "StepAUC", "Lasso"))
+heatmap_plot
+
+```
+
+Como se puede obserbar en el mapa de calor superior, las conclusiones finales de los dos estudios anteriores parecen justificarse con esta visualización. Los métodos NaiveBayes, con todas las variables del problema, Adaboost, con el método de selección Lasso, ANN, con Lasso también, y KNN, con asociación, muestran los AUC promedio globales más altos de todos. 
+:::
 
 
+Se concluye que los modelos que pasarán a la siguiente etapa de inspección serán:
 
-
-
-
-
+1. **Naive Bayes con TodasVariables**, con un AUC promedio de 0.7439, y un comportamiento estable.
+2. **AdaBoost con Lasso**, con un AUC promedio de 0.74, y un comportamiento estable.
+3. **ANN con Lasso**, con un AUC promedio de 0.747, y un comportamiento estable.
+4. **KNN con Asociacion**, con un AUC promedio de 0.745, y un comportamiento algo inestable. 
 
 
 
@@ -6238,150 +6397,164 @@ violin_plot
 
 ## Estabilidad para Hiperparámetros
 
+La estabilidad de los hiperparámetros merece ser explorada durante esta evaluación de modelos de ML. Una inspección detallada de estos parámetros permite entender mejor cómo influyen en el rendimiento del modelo y garantiza que las configuraciones seleccionadas no sean producto del azar. En este apartado, se analizarán los hiperparámetros de los modelos seleccionados anteriormente, utilizando dos funciones de visualización diferentes: una para modelos con dos hiperparámetros y otra para Adaboost, que tiene un único hiperparámetro.
+
+::: {.panel-tabset}
+
+## Mapa de Calor para Modelos con 2 hiperparámetros
+
 ```{r}
-generate_combined_hyperparameter_stability_analysis <- function(stepauc_metrics, lasso_metrics, asociacion_metrics, todasvariables_metrics, hyperparameters) {
-  # Combinar los dataframes
-  performance_metrics <- bind_rows(
-    stepauc_metrics %>% mutate(method = "stepauc"),
-    lasso_metrics %>% mutate(method = "lasso"),
-    asociacion_metrics %>% mutate(method = "asociacion"),
-    todasvariables_metrics %>% mutate(method = "todasvariables")
-  )
+generate_combined_hyperparameter_stability_analysis <- function(df1, df2, df3, df4, hyperparameters) {
+  # Combinamos los data.frames en uno solo
+  combined_df <- bind_rows(df1, df2, df3, df4)
   
-  # Verificar el tamaño de la lista de hiperparámetros
-  if (length(hyperparameters) == 2) {
-    # Extraer los nombres de los hiperparámetros y sus valores posibles
-    hyper_x <- names(hyperparameters)[1]
-    hyper_y <- names(hyperparameters)[2]
-    possible_values_x <- hyperparameters[[hyper_x]]
-    possible_values_y <- hyperparameters[[hyper_y]]
-    
-    # Calcular la frecuencia de selección de cada combinación de hiperparámetros
-    hyperparameter_grid <- expand.grid(possible_values_x, possible_values_y)
-    colnames(hyperparameter_grid) <- c(hyper_x, hyper_y)
-    
-    frequency_data <- performance_metrics %>%
-      count(!!sym(hyper_x), !!sym(hyper_y)) %>%
-      right_join(hyperparameter_grid, by = c(hyper_x, hyper_y)) %>%
-      replace_na(list(n = 0))
-    
-    # Crear el mapa de calor
-    heatmap_plot <- plot_ly(
-      data = frequency_data,
-      x = ~get(hyper_x),
-      y = ~get(hyper_y),
-      z = ~n,
-      type = 'heatmap',
-      colorscale = 'Reds',
-      colorbar = list(title = 'Frecuencia')
-    ) %>%
-      layout(
-        title = paste('Mapa de Calor de Frecuencia de Hiperparámetros:', hyper_x, 'vs', hyper_y),
-        xaxis = list(title = hyper_x),
-        yaxis = list(title = hyper_y)
-      )
-    
-    # Crear los gráficos de violín para mostrar la varianza de cada hiperparámetro
-    violin_plot_x <- plot_ly(data = performance_metrics, y = ~get(hyper_x), type = 'violin', box = list(visible = TRUE), meanline = list(visible = TRUE), split = ~method) %>%
-      layout(
-        title = paste('Distribución del Hiperparámetro:', hyper_x),
-        yaxis = list(title = hyper_x),
-        xaxis = list(title = "Método")
-      )
-    
-    violin_plot_y <- plot_ly(data = performance_metrics, y = ~get(hyper_y), type = 'violin', box = list(visible = TRUE), meanline = list(visible = TRUE), split = ~method) %>%
-      layout(
-        title = paste('Distribución del Hiperparámetro:', hyper_y),
-        yaxis = list(title = hyper_y),
-        xaxis = list(title = "Método")
-      )
-    
-    return(list(heatmap_plot = heatmap_plot, violin_plot_x = violin_plot_x, violin_plot_y = violin_plot_y))
-    
-  } else if (length(hyperparameters) == 1) {
-    # Extraer el nombre del único hiperparámetro y sus valores posibles
-    hyper_x <- names(hyperparameters)[1]
-    possible_values_x <- hyperparameters[[hyper_x]]
-    
-    # Crear los gráficos de violín para mostrar la varianza del único hiperparámetro
-    violin_plot_x <- plot_ly(data = performance_metrics, y = ~get(hyper_x), type = 'violin', box = list(visible = TRUE), meanline = list(visible = TRUE), split = ~method) %>%
-      layout(
-        title = paste('Distribución del Hiperparámetro:', hyper_x),
-        yaxis = list(title = hyper_x),
-        xaxis = list(title = "Método")
-      )
-    
-    return(list(violin_plot_x = violin_plot_x))
-  } else {
-    stop("La lista de hiperparámetros debe contener uno o dos elementos.")
-  }
+  # Reemplazamos los NaN por 0 en las columnas de hiperparámetros
+  param1 <- names(hyperparameters)[1]
+  param2 <- names(hyperparameters)[2]
+  combined_df[is.na(combined_df[[param1]]), param1] <- 0
+  combined_df[is.na(combined_df[[param2]]), param2] <- 0
+  
+  # Contamos las frecuencias de cada combinación de hiperparámetros
+  freq_table <- combined_df %>%
+    count(!!sym(param1), !!sym(param2)) %>%
+    rename(Frequency = n)
+  
+  # Aseguramos que todas las combinaciones posibles están presentes
+  all_combinations <- expand.grid(hyperparameters[[param1]], hyperparameters[[param2]])
+  colnames(all_combinations) <- c(param1, param2)
+  freq_table <- right_join(all_combinations, freq_table, by = c(param1, param2))
+  freq_table[is.na(freq_table)] <- 0
+  
+  # Creación del mapa de calor
+  heatmap_plot <- plot_ly(
+    data = freq_table,
+    x = ~get(param1),
+    y = ~get(param2),
+    z = ~Frequency,
+    type = "heatmap",
+    colorscale = "Viridis"
+  ) %>%
+    layout(
+      title = paste("Heatmap of", param1, "and", param2, "Frequency"),
+      xaxis = list(title = param1),
+      yaxis = list(title = param2)
+    )
+  
+  # Devolvemos el mapa de calor
+  return(heatmap_plot)
 }
 ```
 
-### Decision Tree
+Esta función combina los resultados de múltiples data.frames y crea un mapa de calor que muestra la frecuencia de las combinaciones de dos hiperparámetros. Se reemplazan los valores faltantes por ceros, se asegura de que todas las combinaciones posibles de hiperparámetros estén presentes y, finalmente, se utiliza `plot_ly` para generar el mapa de calor.
+
+## Gráfico de Barras para modelos con 1 hiperparámetro
 
 ```{r}
-hyperparameters <- list(
-  Best_cp = c(0.001, 0.01, 0.1),
-  Best_minsplit = c(2, 5, 10, 15, 20)
-)
+generate_adaboost_hyperparameter_analysis <- function(df1, df2, df3, df4, hyperparameters) {
+  # Combinamos los data.frames en uno solo
+  combined_df <- bind_rows(df1, df2, df3, df4)
+  
+  # Obtenemos el nombre del hiperparámetro
+  param <- names(hyperparameters)[1]
+  
+  # Reemplazamos los NaN por 0 en la columna del hiperparámetro
+  combined_df[is.na(combined_df[[param]]), param] <- 0
+  
+  # Contamos las frecuencias de cada valor del hiperparámetro
+  freq_table <- combined_df %>%
+    count(!!sym(param)) %>%
+    rename(Frequency = n)
+  
+  # Creación del gráfico de barras
+  bar_plot <- plot_ly(
+    data = freq_table,
+    x = ~get(param),
+    y = ~Frequency,
+    type = 'bar'
+  ) %>%
+    layout(
+      title = paste("Bar Plot of", param, "Frequency"),
+      xaxis = list(title = param),
+      yaxis = list(title = "Frequency")
+    )
+  
+  # Devolvemos el gráfico de barras
+  return(bar_plot)
+}
 
-#RPart_StepAUC_Metrics$performance_metrics <- RPart_StepAUC_Metrics$performance_metrics %>% rename(Best_cp = Best_CP)
-#RPart_StepAUC_Metrics$performance_metrics <- RPart_StepAUC_Metrics$performance_metrics %>% rename(Best_minsplit = Best_Minsplit)
-
-
-
-result <- generate_combined_hyperparameter_stability_analysis(RPart_StepAUC_Metrics$performance_metrics, 
-                                                              RPart_Lasso_Metrics$performance_metrics, 
-                                                              RPart_Asociacion_Metrics$performance_metrics,
-                                                              RPart_TodasVariables_Metrics$performance_metrics,
-                                                              hyperparameters)
-
-result$heatmap_plot
-result$violin_plot_x
-result$violin_plot_y
 ```
 
-### SVM
+Esta función se enfoca en modelos con un único hiperparámetro, como Adaboost. Esta función combina varios data.frames y crea un gráfico de barras que muestra la frecuencia de los valores de este hiperparámetro. Similarmente, los valores faltantes se reemplazan por ceros y se cuenta la frecuencia de cada valor del hiperparámetro. 
+:::
+
+Se incluye la discusión:
+
+::: {.panel-tabset}
+
+## KNN
 
 ```{r}
 hyperparameters <- list(
-  Best_Kernel = c(1, 2), # 1: Linear, 2: Poly
-  Best_Cost = c(50, 100, 200)
+  Best_k = c(5, 10, 16, 20, 25, 30, 32),
+  Best_l = c(1, 2)
 )
-
-result <- generate_combined_hyperparameter_stability_analysis(SVM_StepAUC_Metrics$performance_metrics, 
-                                                              SVM_Lasso_Metrics$performance_metrics, 
-                                                              SVM_Asociacion_Metrics$performance_metrics,
-                                                              SVM_TodasVariables_Metrics$performance_metrics,
+result_knn <- generate_combined_hyperparameter_stability_analysis(KNN_TodasVariables_Metrics$performance_metrics, 
+                                                              KNN_Asociacion_Metrics$performance_metrics, 
+                                                              KNN_StepAUC_Metrics$performance_metrics,
+                                                              KNN_Lasso_Metrics$performance_metrics,
                                                               hyperparameters)
-
-result$heatmap_plot
-result$violin_plot_x
-result$violin_plot_y
+result_knn
 ```
 
-### ANN
+Como se puede observar, en el mapa de calor de los hiperparámetros del KNN, hay una clara tendencia hacia la selección de la distancia de Minkowski (`l=1`), dejando a la distancia Euclidea (`l=2`) como una opción secundaria. Por otra parte, una vez fijamos nuestra atención en la distancia de Minkowski, se puede observar que la elección del número de vecinos que influencian la predicción sobre la muestra de test es bastante inestable. Si bien es verdad que `k=10` es el valor más elegido, con 18 apariciones, las elecciones `k={5,15,25,32}` han sido encontradas 12, 10, 14, y 12 veces, respectivamente. Esto es un claro indicativo de que, aunque el algoritmo KNN muestre un AUC alto, sería un riesgo poner un modelo en producción con esta inestabilidad, ya que no se tiene una idea clara sobre qué hiperparámetros son los que mejor encajan con este conjunto de datos. Es por esto que el modelo KNN queda descartado en análisis consecuentes. 
+
+## ANN
 
 ```{r}
 hyperparameters <- list(
-  Best_Size = c(5, 10, 15, 20),
-  Best_Decay = c(0.1, 0.2, 0.3)
+  Best_Size = c(5, 10, 15, 20, 25, 30),
+  Best_Decay = c(0.1, 0.2, 0.3, 0.4)
 )
 
-result <- generate_combined_hyperparameter_stability_analysis(ANN_StepAUC_Metrics$performance_metrics, 
+result_ann <- generate_combined_hyperparameter_stability_analysis(ANN_StepAUC_Metrics$performance_metrics, 
                                                               ANN_Lasso_Metrics$performance_metrics, 
                                                               ANN_Asociacion_Metrics$performance_metrics,
                                                               ANN_TodasVariables_Metrics$performance_metrics,
                                                               hyperparameters)
 
-result$heatmap_plot
-result$violin_plot_x
-result$violin_plot_y
+result_ann
 ```
 
+Como se puede observar en el mapa de calor de las redes neuronales, parece haber un claro consenso sobre los hiperparámetros óptimos del modelo, siendo la combinación `Size=5; Decay=0.4` la encontrada 21 veces, con bastante diferencia. Este tamaño de red neuronal reducido podría sugerir que el problema es fácilmente modelable con una baja cantidad de neuronas, esto tendría sentido, ya que el conjunto de datos con el que se está trabajando no tiene demasiadas variables, por lo que las relaciones intrínsecas entre las muestras y la variable objetivo podrían no ser demasiado complejas. Por otra parte, también se puede explicar un valor de decay tan alto, ya que, al estar el conjunto de datos tan desbalanceado, se prima castigar el overfitting del modelo hacia la clase PCR-Negativa. El modelo ANN es muy consistente con sus hiperparámetros, indicando que una red de size 5-10 con un decay de 0.4 podría ser óptimo para modelar el problema con el objetivo de obtener el máximo AUC posible.  
+
+
+## AdaBoost
+
+```{r}
+hyperparameters <- list(
+  Best_Iteration = c(50, 100, 150, 200)
+)
+
+
+result_ada <- generate_adaboost_hyperparameter_analysis(AdaBoost_TodasVariables_Metrics$performance_metrics, 
+                                                              AdaBoost_Asociacion_Metrics$performance_metrics, 
+                                                              AdaBoost_StepAUC_Metrics$performance_metrics,
+                                                              AdaBoost_Lasso_Metrics$performance_metrics,
+                                                              hyperparameters)
+result_ada
+```
+
+Como se puede observar en el gráfico de barras, el modelo Adaboost también ha convergido la búsqueda de hiperparámetros en la malla definida durante su entrenamiento en un valor específico de Best_Iteration, siendo este 50, con una cantidad de veces encontrado igual a 56. Debido a que el modelo ha concluído que esta cantidad de iteraciones son las óptimas más del 50% de las veces, se tomará este valor como referencia, concluyendo que Adaboost es consistente con respecto a su selección de hiperparámetros.
+
+## Naive Bayes
+
+El modelo Naive Bayes no ha sido entranando con el ajuste de ningún hiperparámetro, esto supone una evidente sorpresa, ya que, al suponer la independencia de las probabilidades condicionales, debería de dar unos resultados pésimos. Sin embargo, viendo que no se ha necesitado un tamaño de red neuronal muy grande para modelar el problema, se puede concluir que el conjunto de datos no parece tener suficientes variables como para capturar la complejidad de la tarea de la predicción del estado PCR-Positivo de un paciente, permitiendo que algoritmos más sencillos como el Naive Bayes alcancen el AUC óptimo de este estudio sin ajustar ningún hiperparámetro.
+
+:::
 
 ## Estabilidad de Variables
+
+Se procederá con el análisis de la estabilidad de las variables seleccionadas. Este análisis permite evaluar la consistencia de las variables elegidas a través de diferentes métodos y modelos, proporcionando información valiosa sobre su importancia y relevancia. En este apartado, se emplearán funciones específicas para contar la frecuencia de selección de variables agrupadas y visualizar estos resultados mediante gráficos de barras. Esta inspección detallada facilita la identificación de variables clave que tienen un impacto significativo en el rendimiento del modelo y asegura que las elecciones realizadas no sean producto del azar o de la variabilidad inherente a los datos.
 
 ```{r, warning=FALSE}
 # Función para contar la frecuencia de selección de variables agrupadas
@@ -6460,6 +6633,9 @@ crear_visualizaciones <- function(combined_df) {
   return(list(plot_metodo = plot_metodo, plot_modelo = plot_modelo))
 }
 
+
+# Ejecución de la función
+
 variablesFactor <- c("Edad", "REst", "RPro", "Estadio", "Grado", "Fenotipo", "NodAfec")
 
 
@@ -6499,24 +6675,54 @@ modelos <- c("NAIVE", "ADA", "DT", "ANN", "SVM")
 
 combined_df <- combinar_dataframes(dataframes, modelos)
 plots <- crear_visualizaciones(combined_df)
+```
+
+::: {.panel-tabset}
+
+## Variables según Método
+
+```{r, warning=FALSE}
 plots$plot_metodo
+```
+
+En el gráfico de barras superior se pueden observar las frecuencias de selección de cada variable por los dos principales métodos de selección de características empleados en este estudio. Un aspecto positivo que se puede remarcar es que, ambos métodos parecen coincidir en la importancia de una serie de variables, mostrando que `Estadio, Fenotipo, Grado,` y `REst` son variables importantes en el análisis, `NodAfec` es prescindible, y hay una ligera discrepancai en `Edad` y `RPro`, pero de manera general, se puede concluir que `Edad` sí tiene significancia sobre la variable objetivo, mientras que `RPro`, no. 
+
+
+## Variables según Modelo 
+
+```{r}
 plots$plot_modelo
 ```
 
+Como se puede observar en el gráfico de barras superior (si se hace *click* en los modelos DT y SVM, se podrán observar solo los modelos de interés), las variables que mejor encajan con cada uno de nuestros modelos finalistas parecen coincidir con las variables seleccionadas por los métodos en gran medida. 
 
-
-
-
+:::
 
 
 ## "Mejor" Modelo
 
+Con toda la información discutida anteriormente, se pretende tomar una decisión informada sobre la selección de un algoritmo de ML, con una serie de hiperparámetros fijos, y con unas variables elegidas del conjunto de datos. Esto se hará con la intención de poner el modelo en producción, permitiendo al usuario realizar predicciones reales sobre pacientes. Los datos recogidos hasta ahora son:
+
+| Modelo       | AUC promedio | Hiperparámetros estables | Metodo         | Variables                               |
+|--------------|--------------|--------------------------|----------------|-----------------------------------------|
+| ANN          | 0.747        | (5, 0.4)                 | Lasso          | Edad, Estadio, Fenotipo, Grado, REst    |
+| NaiveBayes   | 0.7439       | -                        | TodasVariables | Todas                                   |
+| ADA          | 0.74         | 50                       | Lasso          | Edad, Estadio, Fenotipo, Grado, REst    |
+
+Tomando como referencia toda la discusión realizada anterior, se ha decidido que se va a usar un modelo de **Redes Neuronales Artificiales con un tamaño de la capa oculta de 5 neuronas, y un valor de decay de 0.4, las variables utilizadas para este modelo serán las variables seleccionadas por el método Lasso sobre el conjunto de datos completo**. La decisión de dejar fuera el modelo de Naive Bayes se basa en la incapacidad que podría tener el modelo para realizar una integración continua de datos, en la cual la variabilidad de muestras podría aumentar, rompiendo el estado actual del conjunto de datos con el que fue entrenado, y poniendo en evidencia la, *teóricamente*, pobre capacidad de predicción del modelo. Por otro lado, la decisión de dejar fuera el modelo Adaboost ha sido plenamente basada en que su rendimiento honesto es algo más bajo que el de las ANN, ya que, por el resto de características, es un modelo fiable, que se puede adaptar a nuevas muestras, y que ha empelado el mismo método de selección de variables que ANN. 
 
 
 # Conclusión
 
+A lo largo de este proyecto se ha realizado un estudio en profundidad sobre la capacidad de predicción del estado PCR de una serie de pacientes mediante el uso de algoritmos de aprendizaje computacional avanzados, los cuales han sido entrenados con un subconjunto de las variables de los datos originales definido por diferentes algoritmos de selección de características. Para cada algoritmo de aprendizaje computacional, se ha aplicado una estimación honesta de parámetros mediante la implementación de una doble validación cruzada 5x2, en la que los pliegues internos han sido utilizados para buscar la mejor combinación de hiperparámetros de una lista acotada dada, definida mediante diferentes pruebas realizadas sobre la estimación del rendimiento aparente del modelo. La selección de características también fue llevaba a cabo en el pliegue interno de la validación.  
 
+Una vez se han ejecutado todas las pruebas, se ha realizado una discusión de los resultados a modo de estudio comparativo con la finalidad de elegir el algoritmo que mejor se ajusta a la tarea de este proyecto. Para considerar un modelo como válido, se ha considerado la robustez y valor de su AUC global para diferentes semillas que generan particiones de datos aleatorias, la estabilidad de selección de hiperparámetros, y la estabilidad de selección de variables. Así, un modelo que sea considerado como adecuado para el estudio, será el que obtenga una calificación cualitativa correcta en estos tres criterios. 
 
+Finalmente, una vez llevabo a cabo el estudio, se ha concluído que, para este problema, las Redes de Neuronas Artificales, con un tamaño de 5 neuronas en la capa oculta, y con un valor de decay de 0.4, son la mejor opción para predecir el estado PCR (Metástasis) de un paciente, dada su Edad, Estadío, Fenotipo, Grado, y REst. Otros modelos han llegado a la etapa final de la evaluación, pero han sido descartados debido a su poca adaptabilidad a nuevos datos, o su rendimiento algo más pobre de AUC.
+
+Las limitaciones de este proyecto tienen su origen sobre todo en el conjunto de datos. En ningún momento del proyecto se ha conseguido sobrepasar un rendimiento global de 0.8 para el AUC, se teoriza que esto puede ocurrir por varias razones. La primera, es la cantidad de muestras disponibles en este conjunto de datos, la segunda, es la poca cantidad de variables, y la tercera, que puede ser que las variables que existan en este conjunto de datos no sean lo suficientemente significativas con respecto a la característica diana, significando que no es posible modelar el problema con ningún algoritmo, ya que no se capturan bien las características subyacentes de la variable objetivo PCR con ninguna variable. 
+
+A pesar de todo, se considera que se han cumplido los objetivos de este proyecto, ya que, gracias al exitoso análisis en profundidad realizado, se ha tomado una decisión informada por el modelo final. 
 
 
 
