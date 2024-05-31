@@ -6048,12 +6048,171 @@ generate_auc_per_seed_and_fold(ANN_Lasso_Metrics$performance_metrics)
 
 
 
+### AUC - Conclusión
+
+
+```{r}
+generate_auc_comparison_violin_plot <- function(model_data_list) {
+  # Inicializar una lista para almacenar los datos combinados
+  combined_data <- list()
+  
+  # Recorrer cada modelo en el vector de listas
+  for (model_name in names(model_data_list)) {
+    # Obtener los 4 dataframes para el modelo actual
+    model_data_frames <- model_data_list[[model_name]]
+    
+    # Combinar los 4 dataframes en uno solo y agregar una columna para el nombre del modelo
+    model_combined_data <- bind_rows(model_data_frames) %>%
+      mutate(Model = model_name)
+    
+    # Agregar los datos combinados a la lista general
+    combined_data[[model_name]] <- model_combined_data
+  }
+  
+  # Combinar todos los datos en un solo dataframe
+  final_data <- bind_rows(combined_data)
+  
+  # Crear el gráfico de violín
+  violin_plot <- plot_ly(final_data, y = ~AUC, type = 'violin', 
+                         box = list(visible = TRUE), 
+                         meanline = list(visible = TRUE), 
+                         split = ~Model) %>%
+    layout(
+      title = 'Comparativa Global del AUC de Diferentes Modelos',
+      yaxis = list(title = 'AUC'),
+      xaxis = list(title = 'Modelos')
+    )
+  
+  return(violin_plot)
+}
+
+model_data_list <- list(
+  ANN = list(
+    ANN_TodasVariables_Metrics$performance_metrics,
+    ANN_Asociacion_Metrics$performance_metrics,
+    ANN_StepAUC_Metrics$performance_metrics,
+    ANN_Lasso_Metrics$performance_metrics
+  ),
+  SVM = list(
+    SVM_TodasVariables_Metrics$performance_metrics,
+    SVM_Asociacion_Metrics$performance_metrics,
+    SVM_StepAUC_Metrics$performance_metrics,
+    SVM_Lasso_Metrics$performance_metrics
+  ),
+  KNN = list(
+    KNN_TodasVariables_Metrics$performance_metrics,
+    KNN_Asociacion_Metrics$performance_metrics,
+    KNN_StepAUC_Metrics$performance_metrics,
+    KNN_Lasso_Metrics$performance_metrics
+  ),
+  RandomForest = list(
+    RandomForest_TodasVariables_Metrics$performance_metrics,
+    RandomForest_Asociacion_Metrics$performance_metrics,
+    RandomForest_StepAUC_Metrics$performance_metrics
+  ),
+  NaiveBayes = list(
+    NaiveBayes_TodasVariables_Metrics$performance_metrics,
+    NaiveBayes_Asociacion_Metrics$performance_metrics,
+    NaiveBayes_StepAUC_Metrics$performance_metrics,
+    NaiveBayes_Lasso_Metrics$performance_metrics
+  ),
+  AdaBoost = list(
+    AdaBoost_TodasVariables_Metrics$performance_metrics,
+    AdaBoost_Asociacion_Metrics$performance_metrics,
+    AdaBoost_StepAUC_Metrics$performance_metrics,
+    AdaBoost_Lasso_Metrics$performance_metrics
+  ),
+  DecisionTree = list(
+    RPart_TodasVariables_Metrics$performance_metrics,
+    RPart_Asociacion_Metrics$performance_metrics,
+    RPart_StepAUC_Metrics$performance_metrics,
+    RPart_Lasso_Metrics$performance_metrics
+  )
+)
+
+violin_plot <- generate_auc_comparison_violin_plot(model_data_list)
+violin_plot
+
+```
 
 
 
 
 
+```{r}
+generate_auc_feature_selection_violin_plot <- function(selection_methods_data_list) {
+  # Inicializar una lista para almacenar los datos combinados
+  combined_data <- list()
+  
+  # Recorrer cada método de selección en el vector de listas
+  for (method_name in names(selection_methods_data_list)) {
+    # Obtener los dataframes para el método de selección actual
+    method_data_frames <- selection_methods_data_list[[method_name]]
+    
+    # Combinar los dataframes en uno solo y agregar una columna para el nombre del método
+    method_combined_data <- bind_rows(method_data_frames) %>%
+      mutate(Method = method_name)
+    
+    # Agregar los datos combinados a la lista general
+    combined_data[[method_name]] <- method_combined_data
+  }
+  
+  # Combinar todos los datos en un solo dataframe
+  final_data <- bind_rows(combined_data)
+  
+  # Crear el gráfico de violín
+  violin_plot <- plot_ly(final_data, y = ~AUC, type = 'violin', box = list(visible = TRUE), meanline = list(visible = TRUE), split = ~Method) %>%
+    layout(
+      title = 'Comparativa Global del AUC por Método de Selección de Características',
+      yaxis = list(title = 'AUC'),
+      xaxis = list(title = 'Métodos de Selección de Características')
+    )
+  
+  return(violin_plot)
+}
 
+selection_methods_data_list <- list(
+  TodasVariables = list(
+    ANN_TodasVariables_Metrics$performance_metrics,
+    SVM_TodasVariables_Metrics$performance_metrics,
+    KNN_TodasVariables_Metrics$performance_metrics,
+    RandomForest_TodasVariables_Metrics$performance_metrics,
+    NaiveBayes_TodasVariables_Metrics$performance_metrics,
+    AdaBoost_TodasVariables_Metrics$performance_metrics,
+    RPart_TodasVariables_Metrics$performance_metrics
+  ),
+  Asociacion = list(
+    ANN_Asociacion_Metrics$performance_metrics,
+    SVM_Asociacion_Metrics$performance_metrics,
+    KNN_Asociacion_Metrics$performance_metrics,
+    RandomForest_Asociacion_Metrics$performance_metrics,
+    NaiveBayes_Asociacion_Metrics$performance_metrics,
+    AdaBoost_Asociacion_Metrics$performance_metrics,
+    RPart_Asociacion_Metrics$performance_metrics
+  ),
+  StepAUC = list(
+    ANN_StepAUC_Metrics$performance_metrics,
+    SVM_StepAUC_Metrics$performance_metrics,
+    KNN_StepAUC_Metrics$performance_metrics,
+    RandomForest_StepAUC_Metrics$performance_metrics,
+    NaiveBayes_StepAUC_Metrics$performance_metrics,
+    AdaBoost_StepAUC_Metrics$performance_metrics,
+    RPart_StepAUC_Metrics$performance_metrics
+  ),
+  Lasso = list(
+    ANN_Lasso_Metrics$performance_metrics,
+    SVM_Lasso_Metrics$performance_metrics,
+    KNN_Lasso_Metrics$performance_metrics,
+    NaiveBayes_Lasso_Metrics$performance_metrics,
+    AdaBoost_Lasso_Metrics$performance_metrics,
+    RPart_Lasso_Metrics$performance_metrics
+  )
+)
+
+violin_plot <- generate_auc_feature_selection_violin_plot(selection_methods_data_list)
+violin_plot
+
+```
 
 
 
