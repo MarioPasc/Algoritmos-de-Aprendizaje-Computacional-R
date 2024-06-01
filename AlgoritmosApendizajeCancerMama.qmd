@@ -41,6 +41,7 @@ format:
 resource_files:
 - references.bib
 - Variables.png
+- cancermet.jpg
 ---
 
 ```{r setup, echo=FALSE, message=FALSE, warning=FALSE}
@@ -292,6 +293,8 @@ La variable `Her2` muestra dos clases (`N` y `P`). La clase `N` tiene una distri
 data_numeric$Her2P <- NULL
 data_factor$Her2 <- NULL
 data_original$Her2 <- NULL
+
+write.csv(data_factor, file="./data_factor.csv", row.names=FALSE)
 ```
 
 ## Estadio
@@ -2896,7 +2899,6 @@ load("RData_Files_Algorithms/DecisionTree_Lasso.RData")
 
 ## K-Nearest Neighbours 
 
-En este modelo hay que hacer una aclaración importante:
 
 ### Aparente
 
@@ -6274,7 +6276,7 @@ Como se puede observar, todos los métodos de selección de variables exhiben un
 ## AUC Global por Variable y Método
 
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 generate_auc_heatmap <- function(model_data_list, selection_methods) {
   # Inicializar una lista para almacenar los datos combinados
   combined_data <- list()
@@ -6699,7 +6701,7 @@ Como se puede observar en el gráfico de barras superior (si se hace *click* en 
 :::
 
 
-## "Mejor" Modelo
+## Modelo más Adecuado
 
 Con toda la información discutida anteriormente, se pretende tomar una decisión informada sobre la selección de un algoritmo de ML, con una serie de hiperparámetros fijos, y con unas variables elegidas del conjunto de datos. Esto se hará con la intención de poner el modelo en producción, permitiendo al usuario realizar predicciones reales sobre pacientes. Los datos recogidos hasta ahora son:
 
@@ -6709,7 +6711,7 @@ Con toda la información discutida anteriormente, se pretende tomar una decisió
 | NaiveBayes   | 0.7439       | -                        | TodasVariables | Todas                                   |
 | ADA          | 0.74         | 50                       | Lasso          | Edad, Estadio, Fenotipo, Grado, REst    |
 
-Tomando como referencia toda la discusión realizada anterior, se ha decidido que se va a usar un modelo de **Redes Neuronales Artificiales con un tamaño de la capa oculta de 5 neuronas, y un valor de decay de 0.4, las variables utilizadas para este modelo serán las variables seleccionadas por el método Lasso sobre el conjunto de datos completo**. La decisión de dejar fuera el modelo de Naive Bayes se basa en la incapacidad que podría tener el modelo para realizar una integración continua de datos, en la cual la variabilidad de muestras podría aumentar, rompiendo el estado actual del conjunto de datos con el que fue entrenado, y poniendo en evidencia la, *teóricamente*, pobre capacidad de predicción del modelo. Por otro lado, la decisión de dejar fuera el modelo Adaboost ha sido plenamente basada en que su rendimiento honesto es algo más bajo que el de las ANN, ya que, por el resto de características, es un modelo fiable, que se puede adaptar a nuevas muestras, y que ha empelado el mismo método de selección de variables que ANN. 
+Tomando como referencia toda la discusión realizada anteriormente, se ha decidido que se va a usar un modelo de **Redes Neuronales Artificiales con un tamaño de la capa oculta de 5 neuronas, y un valor de decay de 0.4, las variables utilizadas para este modelo serán las variables seleccionadas por el método Lasso sobre el conjunto de datos completo**. La decisión de dejar fuera el modelo de Naive Bayes se basa en la incapacidad que podría tener el modelo para realizar una integración continua de datos, en la cual la variabilidad de muestras podría aumentar, rompiendo el estado actual del conjunto de datos con el que fue entrenado, y poniendo en evidencia la, *teóricamente*, pobre capacidad de predicción del modelo. Por otro lado, la decisión de dejar fuera el modelo Adaboost ha sido plenamente basada en que su rendimiento honesto es algo más bajo que el de las ANN, ya que, por el resto de características, es un modelo fiable, que se puede adaptar a nuevas muestras, y que ha empelado el mismo método de selección de variables que ANN. 
 
 
 # Conclusión
@@ -6727,8 +6729,12 @@ A pesar de todo, se considera que se han cumplido los objetivos de este proyecto
 
 
 
+# Anexo A: Aplicación RShiny y Despliegue del Modelo
 
 
 
+```{=html}
 
+<iframe src="https://mario-pascual-rshiny-uma.shinyapps.io/ModeloCancerMamaProduccion/" width="100%" height="600px" style="border:none;"></iframe>
 
+```
