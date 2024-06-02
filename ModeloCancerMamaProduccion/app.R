@@ -99,11 +99,6 @@ categorizar_edad <- function(edad) {
   }
 }
 
-# Cargar los datos
-data <- read.csv("data_factor.csv")
-# Recodificar la variable PCR para que los valores sean 0 y 1
-data$PCR <- data$PCR - 1
-
 
 # Define server logic required to draw a histogram
 server <- function(input, output, session) {
@@ -168,7 +163,7 @@ server <- function(input, output, session) {
     # Crear las mismas columnas en new_data_matrix que en data_matrix
     new_data_matrix <- model.matrix(~ Edad + Estadio + Fenotipo + Grado + REst, data = new_data)
     new_data_matrix <- as.data.frame(new_data_matrix)
-    
+
     # Asegurarse de que new_data_matrix tenga las mismas columnas que data_matrix
     missing_cols <- setdiff(names(data_matrix), names(new_data_matrix))
     for (col in missing_cols) {
